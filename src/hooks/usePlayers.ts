@@ -40,7 +40,7 @@ export function useUpdatePlayer() {
       id,
       name,
       gender,
-      team_id,
+      team_id: _team_id,
     }: {
       id: string
       name: string
