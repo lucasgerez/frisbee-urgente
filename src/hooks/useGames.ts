@@ -64,11 +64,15 @@ export function useUpdateGameStatus() {
       id: string
       status: GameStatus
       started_at?: string
-      ended_at?: string
+      ended_at?: string | null
     }) => {
       const { data, error } = await supabase
         .from('games')
-        .update({ status, ...(started_at ? { started_at } : {}), ...(ended_at ? { ended_at } : {}) })
+        .update({
+          status,
+          ...(started_at ? { started_at } : {}),
+          ...(ended_at !== undefined ? { ended_at } : {}),
+        })
         .eq('id', id)
         .select()
         .single()
