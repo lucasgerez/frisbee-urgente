@@ -86,41 +86,51 @@ export type Database = {
         Row: Team
         Insert: Omit<Team, 'id' | 'created_at'>
         Update: Partial<Omit<Team, 'id' | 'created_at'>>
+        Relationships: []
       }
       players: {
         Row: Player
         Insert: Omit<Player, 'id' | 'created_at'>
         Update: Partial<Omit<Player, 'id' | 'created_at'>>
+        Relationships: []
       }
       tournaments: {
         Row: Tournament
         Insert: Omit<Tournament, 'id' | 'created_at'>
         Update: Partial<Omit<Tournament, 'id' | 'created_at'>>
+        Relationships: []
       }
       tournament_teams: {
         Row: TournamentTeam
         Insert: Omit<TournamentTeam, 'id'>
         Update: Partial<Omit<TournamentTeam, 'id'>>
+        Relationships: []
       }
       games: {
         Row: Game
         Insert: Omit<Game, 'id' | 'created_at'>
         Update: Partial<Omit<Game, 'id' | 'created_at'>>
+        Relationships: []
       }
       goals: {
         Row: Goal
         Insert: Omit<Goal, 'id' | 'created_at'>
         Update: Partial<Omit<Goal, 'id' | 'created_at'>>
+        Relationships: []
       }
       defenses: {
         Row: Defense
         Insert: Omit<Defense, 'id' | 'created_at'>
         Update: Partial<Omit<Defense, 'id' | 'created_at'>>
+        Relationships: []
       }
     }
+    Views: {}
+    Functions: {}
     Enums: {
       gender_enum: Gender
       game_status: GameStatus
     }
+    CompositeTypes: {}
   }
 }

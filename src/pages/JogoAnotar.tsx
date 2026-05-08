@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useGame } from '../hooks/useGames'
-import { useGameGoals, useCreateGoal } from '../hooks/useGoals'
-import { useGameDefenses, useCreateDefense } from '../hooks/useDefenses'
+import { useGameGoals, useCreateGoal, useDeleteGoal } from '../hooks/useGoals'
+import { useGameDefenses, useCreateDefense, useDeleteDefense } from '../hooks/useDefenses'
 import { usePlayers } from '../hooks/usePlayers'
 import { useUpdateGameStatus } from '../hooks/useGames'
 import { useGameTimer } from '../hooks/useGameTimer'
@@ -12,11 +12,17 @@ import { Button } from '../components/ui/Button'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { GameStatusBadge } from '../components/ui/Badge'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 export function JogoAnotar() {
   const { id } = useParams<{ id: string }>()
   const [goalOpen, setGoalOpen] = useState(false)
   const [defenseOpen, setDefenseOpen] = useState(false)
+  const [eventToDelete, setEventToDelete] = useState<
+    | { type: 'goal'; id: string; label: string }
+    | { type: 'defense'; id: string; label: string }
+    | null
+  >(null)
 
   const { data: game, isLoading: gameLoading, error: gameError } = useGame(id)
   const { data: goals = [] } = useGameGoals(id)
@@ -26,6 +32,8 @@ export function JogoAnotar() {
 
   const createGoal = useCreateGoal()
   const createDefense = useCreateDefense()
+  const deleteGoal = useDeleteGoal()
+  const deleteDefense = useDeleteDefense()
   const updateStatus = useUpdateGameStatus()
   const { display: timerDisplay } = useGameTimer(game)
 
@@ -57,6 +65,24 @@ export function JogoAnotar() {
       status: 'finished',
       ended_at: new Date().toISOString(),
     })
+  }
+
+  const handleReopen = () => {
+    updateStatus.mutate({
+      id: game.id,
+      status: 'in_progress',
+      ended_at: null,
+    })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!eventToDelete) return
+    if (eventToDelete.type === 'goal') {
+      await deleteGoal.mutateAsync({ id: eventToDelete.id, game_id: game.id })
+    } else {
+      await deleteDefense.mutateAsync({ id: eventToDelete.id, game_id: game.id })
+    }
+    setEventToDelete(null)
   }
 
   return (
@@ -117,9 +143,14 @@ export function JogoAnotar() {
               </>
             )}
             {game.status === 'finished' && (
-              <div className="text-sm text-gray-500 py-2 text-center w-full">
-                Jogo encerrado. Consulte as estatísticas finais.
-              </div>
+              <>
+                <Button onClick={handleReopen} loading={updateStatus.isPending} className="flex-1">
+                  ▶ Retomar jogo
+                </Button>
+                <p className="text-xs text-gray-400 w-full text-center mt-1">
+                  Jogo encerrado. Retome para corrigir eventos.
+                </p>
+              </>
             )}
           </div>
         </div>
@@ -206,6 +237,29 @@ export function JogoAnotar() {
                         </>
                       ) : null}
                     </div>
+                    {game.status !== 'finished' && (
+                      <button
+                        onClick={() => {
+                          if (event.type === 'goal' && event.goal) {
+                            setEventToDelete({
+                              type: 'goal',
+                              id: event.goal.id,
+                              label: `o gol de ${event.goal.scorer.name}`,
+                            })
+                          } else if (event.defense) {
+                            setEventToDelete({
+                              type: 'defense',
+                              id: event.defense.id,
+                              label: `a defesa de ${event.defense.player.name}`,
+                            })
+                          }
+                        }}
+                        aria-label="Excluir evento"
+                        className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1 -m-1 text-lg"
+                      >
+                        🗑
+                      </button>
+                    )}
                   </div>
                 ))}
             </div>
@@ -235,6 +289,14 @@ export function JogoAnotar() {
         onConfirm={async (data) => {
           await createDefense.mutateAsync({ game_id: game.id, ...data })
         }}
+      />
+      <ConfirmDialog
+        open={!!eventToDelete}
+        onClose={() => setEventToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={eventToDelete?.type === 'goal' ? 'Excluir gol' : 'Excluir defesa'}
+        message={eventToDelete ? `Tem certeza que deseja excluir ${eventToDelete.label}?` : ''}
+        loading={deleteGoal.isPending || deleteDefense.isPending}
       />
     </div>
   )
