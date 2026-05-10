@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTeams } from '../hooks/useTeams'
 import { useTournaments, useCreateTournament, useDeleteTournament } from '../hooks/useTournaments'
 import { MultiSearchableSelect } from '../components/ui/MultiSearchableSelect'
@@ -124,6 +125,11 @@ export function Torneios() {
                   </svg>
                 </Button>
               </div>
+              <Link to={`/torneios/${tournament.id}/estatisticas`} className="block mt-3">
+                <Button variant="secondary" size="sm" className="w-full">
+                  Estatísticas
+                </Button>
+              </Link>
             </div>
           ))
         )}
