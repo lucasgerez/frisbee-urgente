@@ -32,3 +32,9 @@ export function formatDateTime(iso: string): string {
     minute: '2-digit',
   })
 }
+
+export function scoreColorClass(score: number, opponentScore: number): string {
+  if (score > opponentScore) return 'text-green-500'
+  if (score < opponentScore) return 'text-red-500'
+  return 'text-sky-400'
+}

@@ -82,6 +82,36 @@ export function useUpdateGameStatus() {
   })
 }
 
+export function useUpdateGame() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      tournament_id,
+      team_a_id,
+      team_b_id,
+    }: {
+      id: string
+      tournament_id: string
+      team_a_id: string
+      team_b_id: string
+    }) => {
+      const { data, error } = await supabase
+        .from('games')
+        .update({ tournament_id, team_a_id, team_b_id })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Game
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['games', vars.id] })
+      qc.invalidateQueries({ queryKey: ['games'] })
+    },
+  })
+}
+
 export function useDeleteGame() {
   const qc = useQueryClient()
   return useMutation({

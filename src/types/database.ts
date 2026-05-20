@@ -14,6 +14,8 @@ export interface Team {
 export interface Player {
   id: string
   name: string
+  nickname: string | null
+  number: string | null
   team_id: string
   gender: Gender
   created_at: string

@@ -65,6 +65,52 @@ export function useCreateTournament() {
   })
 }
 
+export function useUpdateTournament() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      name,
+      teamIds,
+    }: {
+      id: string
+      name: string
+      teamIds: string[]
+    }) => {
+      const { data: tournament, error: tErr } = await supabase
+        .from('tournaments')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single()
+      if (tErr) throw tErr
+
+      const { error: deleteErr } = await supabase
+        .from('tournament_teams')
+        .delete()
+        .eq('tournament_id', id)
+      if (deleteErr) throw deleteErr
+
+      if (teamIds.length > 0) {
+        const { error: insertErr } = await supabase.from('tournament_teams').insert(
+          teamIds.map((team_id) => ({
+            tournament_id: id,
+            team_id,
+          }))
+        )
+        if (insertErr) throw insertErr
+      }
+
+      return tournament as Tournament
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['tournaments'] })
+      qc.invalidateQueries({ queryKey: ['tournaments', vars.id, 'teams'] })
+      qc.invalidateQueries({ queryKey: ['games'] })
+    },
+  })
+}
+
 export function useDeleteTournament() {
   const qc = useQueryClient()
   return useMutation({

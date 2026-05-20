@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Player, Gender } from '../types/database'
 
+export interface PlayerPayload {
+  name: string
+  nickname: string | null
+  number: string | null
+  team_id: string
+  gender: Gender
+}
+
 export function usePlayers(teamId?: string) {
   return useQuery({
     queryKey: ['players', teamId],
@@ -19,7 +27,7 @@ export function usePlayers(teamId?: string) {
 export function useCreatePlayer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { name: string; team_id: string; gender: Gender }) => {
+    mutationFn: async (payload: PlayerPayload) => {
       const { data, error } = await supabase
         .from('players')
         .insert(payload)
@@ -39,17 +47,21 @@ export function useUpdatePlayer() {
     mutationFn: async ({
       id,
       name,
+      nickname,
+      number,
       gender,
       team_id: _team_id,
     }: {
       id: string
       name: string
+      nickname: string | null
+      number: string | null
       gender: Gender
       team_id: string
     }) => {
       const { data, error } = await supabase
         .from('players')
-        .update({ name, gender })
+        .update({ name, nickname, number, gender })
         .eq('id', id)
         .select()
         .single()

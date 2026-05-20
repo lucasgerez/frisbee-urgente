@@ -2,6 +2,22 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Goal, GoalWithPlayers } from '../types/database'
 
+export function useGoals() {
+  return useQuery({
+    queryKey: ['goals'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('goals')
+        .select(
+          '*, scorer:players!goals_scorer_id_fkey(*), assistant:players!goals_assistant_id_fkey(*), scoring_team:teams(*)'
+        )
+        .order('created_at')
+      if (error) throw error
+      return data as GoalWithPlayers[]
+    },
+  })
+}
+
 export function useGameGoals(gameId?: string) {
   return useQuery({
     queryKey: ['games', gameId, 'goals'],
@@ -39,6 +55,7 @@ export function useCreateGoal() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'goals'] })
+      qc.invalidateQueries({ queryKey: ['goals'] })
     },
   })
 }
@@ -53,6 +70,7 @@ export function useDeleteGoal() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'goals'] })
+      qc.invalidateQueries({ queryKey: ['goals'] })
     },
   })
 }
