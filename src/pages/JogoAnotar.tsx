@@ -13,6 +13,8 @@ import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { GameStatusBadge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { scoreColorClass } from '../lib/utils'
+import { getPlayerDisplayName } from '../lib/players'
 
 export function JogoAnotar() {
   const { id } = useParams<{ id: string }>()
@@ -97,7 +99,7 @@ export function JogoAnotar() {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex-1 text-center">
-            <div className="text-gold-400 font-black text-4xl">{scoreA}</div>
+            <div className={`font-black text-4xl ${scoreColorClass(scoreA, scoreB)}`}>{scoreA}</div>
             <div className="text-white text-xs font-bold mt-1 truncate">{game.team_a.name}</div>
           </div>
           <div className="flex flex-col items-center px-3">
@@ -106,7 +108,7 @@ export function JogoAnotar() {
             </div>
           </div>
           <div className="flex-1 text-center">
-            <div className="text-gold-400 font-black text-4xl">{scoreB}</div>
+            <div className={`font-black text-4xl ${scoreColorClass(scoreB, scoreA)}`}>{scoreB}</div>
             <div className="text-white text-xs font-bold mt-1 truncate">{game.team_b.name}</div>
           </div>
         </div>
@@ -213,14 +215,14 @@ export function JogoAnotar() {
                       {event.type === 'goal' && event.goal ? (
                         <>
                           <div className="text-sm font-medium text-gray-900 truncate">
-                            {event.goal.scorer.name}
+                            {getPlayerDisplayName(event.goal.scorer)}
                             <span className={`ml-1 text-xs ${event.goal.scorer.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
                               ({event.goal.scorer.gender === 'Masculino' ? 'M' : 'F'})
                             </span>
                           </div>
                           {event.goal.assistant && (
                             <div className="text-xs text-gray-400 truncate">
-                              Assist: {event.goal.assistant.name}
+                              Assist: {getPlayerDisplayName(event.goal.assistant)}
                             </div>
                           )}
                           <div className="text-xs text-gray-400">{event.goal.scoring_team.name}</div>
@@ -228,7 +230,7 @@ export function JogoAnotar() {
                       ) : event.defense ? (
                         <>
                           <div className="text-sm font-medium text-gray-900 truncate">
-                            {event.defense.player.name}
+                            {getPlayerDisplayName(event.defense.player)}
                             <span className={`ml-1 text-xs ${event.defense.player.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
                               ({event.defense.player.gender === 'Masculino' ? 'M' : 'F'})
                             </span>

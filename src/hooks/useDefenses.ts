@@ -2,6 +2,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Defense, DefenseWithPlayer } from '../types/database'
 
+export function useDefenses() {
+  return useQuery({
+    queryKey: ['defenses'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('defenses')
+        .select('*, player:players(*)')
+        .order('created_at')
+      if (error) throw error
+      return data as DefenseWithPlayer[]
+    },
+  })
+}
+
 export function useGameDefenses(gameId?: string) {
   return useQuery({
     queryKey: ['games', gameId, 'defenses'],
@@ -36,6 +50,7 @@ export function useCreateDefense() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'defenses'] })
+      qc.invalidateQueries({ queryKey: ['defenses'] })
     },
   })
 }
@@ -50,6 +65,7 @@ export function useDeleteDefense() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'defenses'] })
+      qc.invalidateQueries({ queryKey: ['defenses'] })
     },
   })
 }

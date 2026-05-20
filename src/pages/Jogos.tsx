@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { useTournaments, useTournamentTeams } from '../hooks/useTournaments'
-import { useGames, useCreateGame } from '../hooks/useGames'
+import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '../hooks/useGames'
+import { useGoals } from '../hooks/useGoals'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { GameCard } from '../components/games/GameCard'
 import { Button } from '../components/ui/Button'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
-import type { Tournament, Team } from '../types/database'
+import type { GameWithTeams, Tournament, Team } from '../types/database'
 
 export function Jogos() {
   const [showForm, setShowForm] = useState(false)
+  const [editingGame, setEditingGame] = useState<GameWithTeams | null>(null)
+  const [deleteGame, setDeleteGame] = useState<GameWithTeams | null>(null)
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [teamA, setTeamA] = useState<Team | null>(null)
   const [teamB, setTeamB] = useState<Team | null>(null)
@@ -17,7 +21,10 @@ export function Jogos() {
   const { data: tournaments = [] } = useTournaments()
   const { data: tournamentTeams = [] } = useTournamentTeams(selectedTournament?.id)
   const { data: games = [], isLoading, error } = useGames()
+  const { data: goals = [], error: goalsError } = useGoals()
   const createGame = useCreateGame()
+  const updateGame = useUpdateGame()
+  const deleteGameMutation = useDeleteGame()
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
@@ -28,19 +35,37 @@ export function Jogos() {
     setTeamB(null)
   }
 
+  const resetForm = () => {
+    setSelectedTournament(null)
+    setTeamA(null)
+    setTeamB(null)
+    setEditingGame(null)
+    setShowForm(false)
+  }
+
+  const handleEdit = (game: GameWithTeams) => {
+    setEditingGame(game)
+    setSelectedTournament(game.tournament)
+    setTeamA(game.team_a)
+    setTeamB(game.team_b)
+    setShowForm(true)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedTournament || !teamA || !teamB) return
     try {
-      await createGame.mutateAsync({
+      const payload = {
         tournament_id: selectedTournament.id,
         team_a_id: teamA.id,
         team_b_id: teamB.id,
-      })
-      setSelectedTournament(null)
-      setTeamA(null)
-      setTeamB(null)
-      setShowForm(false)
+      }
+      if (editingGame) {
+        await updateGame.mutateAsync({ id: editingGame.id, ...payload })
+      } else {
+        await createGame.mutateAsync(payload)
+      }
+      resetForm()
     } catch (err) {
       // shown inline
     }
@@ -54,7 +79,9 @@ export function Jogos() {
 
       {showForm ? (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
-          <h2 className="font-bold text-gray-800">Novo jogo</h2>
+          <h2 className="font-bold text-gray-800">
+            {editingGame ? 'Editar jogo' : 'Novo jogo'}
+          </h2>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Torneio</label>
@@ -106,28 +133,35 @@ export function Jogos() {
           {createGame.isError && (
             <ErrorMessage message={(createGame.error as Error).message} />
           )}
+          {updateGame.isError && (
+            <ErrorMessage message={(updateGame.error as Error).message} />
+          )}
 
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={() => setShowForm(false)} className="flex-1">
+            <Button type="button" variant="secondary" onClick={resetForm} className="flex-1">
               Cancelar
             </Button>
             <Button
               type="submit"
-              loading={createGame.isPending}
+              loading={createGame.isPending || updateGame.isPending}
               disabled={!selectedTournament || !teamA || !teamB}
               className="flex-1"
             >
-              Criar jogo
+              {editingGame ? 'Salvar jogo' : 'Criar jogo'}
             </Button>
           </div>
         </form>
       ) : (
-        <Button onClick={() => setShowForm(true)} className="w-full" size="lg">
+        <Button onClick={() => {
+          resetForm()
+          setShowForm(true)
+        }} className="w-full" size="lg">
           + Novo jogo
         </Button>
       )}
 
       {error && <ErrorMessage message="Erro ao carregar jogos" />}
+      {goalsError && <ErrorMessage message="Erro ao carregar placares" />}
 
       <div className="space-y-3">
         {games.length === 0 ? (
@@ -135,9 +169,37 @@ export function Jogos() {
             Nenhum jogo cadastrado.
           </div>
         ) : (
-          games.map((game) => <GameCard key={game.id} game={game} />)
+          games.map((game) => (
+            <GameCard
+              key={game.id}
+              game={game}
+              goalCounts={{
+                teamA: goals.filter(
+                  (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_a_id
+                ).length,
+                teamB: goals.filter(
+                  (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_b_id
+                ).length,
+              }}
+              onEdit={handleEdit}
+              onDelete={setDeleteGame}
+            />
+          ))
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteGame}
+        onClose={() => setDeleteGame(null)}
+        onConfirm={async () => {
+          if (!deleteGame) return
+          await deleteGameMutation.mutateAsync(deleteGame.id)
+          setDeleteGame(null)
+        }}
+        title="Excluir jogo"
+        message={`Tem certeza que deseja excluir "${deleteGame?.team_a.name} × ${deleteGame?.team_b.name}"? Gols e defesas desse jogo tambem serão removidos.`}
+        loading={deleteGameMutation.isPending}
+      />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { Modal } from '../ui/Modal'
 import { PlayerForm } from './PlayerForm'
 import { useUpdatePlayer, useDeletePlayer } from '../../hooks/usePlayers'
+import { getPlayerDisplayName } from '../../lib/players'
 
 interface PlayerListProps {
   players: Player[]
@@ -33,7 +34,19 @@ export function PlayerList({ players, teamId }: PlayerListProps) {
         {players.map((player) => (
           <li key={player.id} className="flex items-center gap-3 py-3 px-1">
             <GenderBadge gender={player.gender} />
-            <span className="flex-1 text-sm font-medium text-gray-900">{player.name}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {player.number !== null && (
+                  <span className="text-xs font-black text-gray-500">#{player.number}</span>
+                )}
+                <span className="text-sm font-medium text-gray-900 truncate">
+                  {getPlayerDisplayName(player)}
+                </span>
+              </div>
+              {player.nickname && (
+                <div className="text-xs text-gray-400 truncate">{player.name}</div>
+              )}
+            </div>
             <div className="flex gap-1">
               <Button
                 variant="ghost"

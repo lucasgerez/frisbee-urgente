@@ -2,16 +2,19 @@ import { useState } from 'react'
 import type { Player, Gender } from '../../types/database'
 import { Button } from '../ui/Button'
 import { ErrorMessage } from '../ui/ErrorMessage'
+import type { PlayerPayload } from '../../hooks/usePlayers'
 
 interface PlayerFormProps {
   teamId: string
   player?: Player
-  onSubmit: (data: { name: string; gender: Gender; team_id: string }) => Promise<void>
+  onSubmit: (data: PlayerPayload) => Promise<void>
   onCancel?: () => void
 }
 
 export function PlayerForm({ teamId, player, onSubmit, onCancel }: PlayerFormProps) {
   const [name, setName] = useState(player?.name ?? '')
+  const [nickname, setNickname] = useState(player?.nickname ?? '')
+  const [number, setNumber] = useState(player?.number?.toString() ?? '')
   const [gender, setGender] = useState<Gender>(player?.gender ?? 'Masculino')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,12 +25,21 @@ export function PlayerForm({ teamId, player, onSubmit, onCancel }: PlayerFormPro
       setError('Nome é obrigatório')
       return
     }
+
     setError('')
     setLoading(true)
     try {
-      await onSubmit({ name: name.trim(), gender, team_id: teamId })
+      await onSubmit({
+        name: name.trim(),
+        nickname: nickname.trim() || null,
+        number: number.trim() || null,
+        gender,
+        team_id: teamId,
+      })
       if (!player) {
         setName('')
+        setNickname('')
+        setNumber('')
         setGender('Masculino')
       }
     } catch (err) {
@@ -48,6 +60,30 @@ export function PlayerForm({ teamId, player, onSubmit, onCancel }: PlayerFormPro
           placeholder="Nome do jogador"
           className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-cobalt-600 focus:ring-2 focus:ring-cobalt-600/20"
         />
+      </div>
+
+      <div className="grid grid-cols-[1fr_104px] gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Apelido</label>
+          <input
+            type="text"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="Apelido"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-cobalt-600 focus:ring-2 focus:ring-cobalt-600/20"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+          <input
+            type="text"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="00"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-cobalt-600 focus:ring-2 focus:ring-cobalt-600/20"
+          />
+        </div>
       </div>
 
       <div>

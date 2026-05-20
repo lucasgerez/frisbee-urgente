@@ -1,4 +1,5 @@
 import type { GameWithTeams, GoalWithPlayers } from '../../types/database'
+import { scoreColorClass } from '../../lib/utils'
 import { GameStatusBadge } from '../ui/Badge'
 
 interface ScoreboardProps {
@@ -16,7 +17,7 @@ export function Scoreboard({ game, goals, timerDisplay }: ScoreboardProps) {
       <div className="flex items-center justify-between max-w-lg mx-auto">
         {/* Team A */}
         <div className="flex-1 text-center">
-          <div className="text-gold-400 font-black text-3xl">{scoreA}</div>
+          <div className={`font-black text-3xl ${scoreColorClass(scoreA, scoreB)}`}>{scoreA}</div>
           <div className="text-white font-bold text-sm mt-1 truncate">{game.team_a.name}</div>
         </div>
 
@@ -31,7 +32,7 @@ export function Scoreboard({ game, goals, timerDisplay }: ScoreboardProps) {
 
         {/* Team B */}
         <div className="flex-1 text-center">
-          <div className="text-gold-400 font-black text-3xl">{scoreB}</div>
+          <div className={`font-black text-3xl ${scoreColorClass(scoreB, scoreA)}`}>{scoreB}</div>
           <div className="text-white font-bold text-sm mt-1 truncate">{game.team_b.name}</div>
         </div>
       </div>
