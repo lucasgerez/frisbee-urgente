@@ -51,8 +51,12 @@ export function Login() {
   }
 
   const handleSignOut = async () => {
-    await signOut()
-    setError(null)
+    try {
+      await signOut()
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao sair')
+    }
   }
 
   return (

@@ -56,25 +56,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (!isMounted) return
-      setSession(data.session)
-      if (data.session?.user) {
-        await loadProfile(data.session.user)
-      } else {
+      try {
+        setSession(data.session)
+        if (data.session?.user) {
+          await loadProfile(data.session.user)
+        } else {
+          setProfile(null)
+        }
+      } catch {
         setProfile(null)
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      setSession(nextSession)
-      if (nextSession?.user) {
-        await loadProfile(nextSession.user)
-      } else {
+      try {
+        setSession(nextSession)
+        if (nextSession?.user) {
+          await loadProfile(nextSession.user)
+        } else {
+          setProfile(null)
+        }
+      } catch {
         setProfile(null)
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     })
 
     return () => {
@@ -84,7 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
+    setSession(null)
+    setProfile(null)
+    setIsLoading(false)
+    if (error) {
+      // Keep user logged out locally even if remote revocation fails.
+      console.error('Logout warning:', error.message)
+    }
   }
 
   const value = useMemo<AuthState>(

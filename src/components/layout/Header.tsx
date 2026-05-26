@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { Button } from '../ui/Button'
 
 export function Header() {
   const { user, profile, isEditor, signOut } = useAuth()
+  const [signOutError, setSignOutError] = useState<string | null>(null)
   const displayName =
     profile?.full_name ||
     (typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null) ||
@@ -37,8 +39,20 @@ export function Header() {
             <div className={`text-[11px] ${isEditor ? 'text-emerald-300' : 'text-amber-300'}`}>
               {isEditor ? 'editor' : 'sem permissao'}
             </div>
+            {signOutError && <div className="text-[11px] text-red-300">{signOutError}</div>}
           </div>
-          <Button size="sm" variant="secondary" onClick={() => void signOut()}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={async () => {
+              setSignOutError(null)
+              try {
+                await signOut()
+              } catch (error) {
+                setSignOutError(error instanceof Error ? error.message : 'Falha ao sair')
+              }
+            }}
+          >
             Sair
           </Button>
         </div>
