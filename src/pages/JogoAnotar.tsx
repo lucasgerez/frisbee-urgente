@@ -48,7 +48,8 @@ export function JogoAnotar() {
     }
   }, [authLoading, location.pathname, navigate, session])
 
-  if (authLoading || gameLoading || !session) return <LoadingScreen />
+  if (authLoading || gameLoading) return <LoadingScreen />
+  if (!session) return null
   if (gameError || !game) return <ErrorMessage message="Jogo não encontrado" className="m-4" />
   if (!isEditor) {
     return (

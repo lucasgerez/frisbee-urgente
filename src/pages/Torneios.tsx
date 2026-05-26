@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTeams } from '../hooks/useTeams'
 import { useGames } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
@@ -19,6 +20,7 @@ import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { GameStatusBadge } from '../components/ui/Badge'
 import { formatDate, formatDateTime, scoreColorClass } from '../lib/utils'
 import { getPlayerDisplayName } from '../lib/players'
+import { useAuth } from '../hooks/useAuth'
 import type { DefenseWithPlayer, Gender, GoalWithPlayers, Team, Tournament } from '../types/database'
 
 interface PlayerTournamentStats {
@@ -211,6 +213,7 @@ function PlayerStatsSection({
 }
 
 export function Torneios() {
+  const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null)
   const [name, setName] = useState('')
@@ -220,6 +223,7 @@ export function Torneios() {
   const [expandedStatsTournamentId, setExpandedStatsTournamentId] = useState<string | null>(null)
   const [statsSortKey, setStatsSortKey] = useState<StatsSortKey>('goals')
   const [statsSortDirection, setStatsSortDirection] = useState<SortDirection>('desc')
+  const [permissionError, setPermissionError] = useState<string | null>(null)
 
   const { data: teams = [] } = useTeams()
   const { data: tournaments = [], isLoading, error } = useTournaments()
@@ -230,6 +234,25 @@ export function Torneios() {
   const createTournament = useCreateTournament()
   const updateTournament = useUpdateTournament()
   const deleteTournamentMutation = useDeleteTournament()
+  const { isLoading: authLoading, session, isEditor } = useAuth()
+
+  const requireEditor = () => {
+    setPermissionError(null)
+
+    if (authLoading) return false
+
+    if (!session) {
+      navigate(`/login?redirectTo=${encodeURIComponent('/torneios')}`)
+      return false
+    }
+
+    if (!isEditor) {
+      setPermissionError('Sua conta nao tem permissao para criar ou editar torneios.')
+      return false
+    }
+
+    return true
+  }
 
   useEffect(() => {
     if (editingTournament && editingTeams) setSelectedTeams(editingTeams)
@@ -243,6 +266,7 @@ export function Torneios() {
   }
 
   const handleEdit = (tournament: Tournament) => {
+    if (!requireEditor()) return
     setEditingTournament(tournament)
     setName(tournament.name)
     setSelectedTeams([])
@@ -262,6 +286,7 @@ export function Torneios() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
+    if (!requireEditor()) return
     try {
       const payload = {
         name: name.trim(),
@@ -283,6 +308,7 @@ export function Torneios() {
   return (
     <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
       <h1 className="text-2xl font-black text-gray-900">Torneios</h1>
+      {permissionError && <ErrorMessage message={permissionError} />}
 
       {showForm ? (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
@@ -339,9 +365,10 @@ export function Torneios() {
         </form>
       ) : (
         <Button onClick={() => {
+          if (!requireEditor()) return
           resetForm()
           setShowForm(true)
-        }} className="w-full" size="lg">
+        }} className="w-full" size="lg" loading={authLoading}>
           + Novo torneio
         </Button>
       )}
@@ -391,7 +418,10 @@ export function Torneios() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDeleteTournament(tournament)}
+                      onClick={() => {
+                        if (!requireEditor()) return
+                        setDeleteTournament(tournament)
+                      }}
                       className="!px-2 text-red-500 hover:!bg-red-50"
                       aria-label={`Excluir ${tournament.name}`}
                     >
@@ -534,6 +564,7 @@ export function Torneios() {
         onClose={() => setDeleteTournament(null)}
         onConfirm={async () => {
           if (!deleteTournament) return
+          if (!requireEditor()) return
           await deleteTournamentMutation.mutateAsync(deleteTournament.id)
           setDeleteTournament(null)
         }}

@@ -11,9 +11,11 @@ import { getPlayerDisplayName } from '../../lib/players'
 interface PlayerListProps {
   players: Player[]
   teamId: string
+  canEdit: boolean
+  onUnauthorized: () => void
 }
 
-export function PlayerList({ players, teamId }: PlayerListProps) {
+export function PlayerList({ players, teamId, canEdit, onUnauthorized }: PlayerListProps) {
   const [editPlayer, setEditPlayer] = useState<Player | null>(null)
   const [deletePlayer, setDeletePlayer] = useState<Player | null>(null)
 
@@ -51,7 +53,13 @@ export function PlayerList({ players, teamId }: PlayerListProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setEditPlayer(player)}
+                onClick={() => {
+                  if (!canEdit) {
+                    onUnauthorized()
+                    return
+                  }
+                  setEditPlayer(player)
+                }}
                 className="!px-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -62,7 +70,13 @@ export function PlayerList({ players, teamId }: PlayerListProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setDeletePlayer(player)}
+                onClick={() => {
+                  if (!canEdit) {
+                    onUnauthorized()
+                    return
+                  }
+                  setDeletePlayer(player)
+                }}
                 className="!px-2 text-red-500 hover:!bg-red-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,6 +100,10 @@ export function PlayerList({ players, teamId }: PlayerListProps) {
             teamId={teamId}
             player={editPlayer}
             onSubmit={async (data) => {
+              if (!canEdit) {
+                onUnauthorized()
+                return
+              }
               await updatePlayer.mutateAsync({ id: editPlayer.id, ...data })
               setEditPlayer(null)
             }}
@@ -100,6 +118,10 @@ export function PlayerList({ players, teamId }: PlayerListProps) {
         onClose={() => setDeletePlayer(null)}
         onConfirm={async () => {
           if (!deletePlayer) return
+          if (!canEdit) {
+            onUnauthorized()
+            return
+          }
           await deletePlayerMutation.mutateAsync({
             id: deletePlayer.id,
             team_id: teamId,
