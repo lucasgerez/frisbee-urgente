@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTournaments, useTournamentTeams } from '../hooks/useTournaments'
 import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
+import { useAuth } from '../hooks/useAuth'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { GameCard } from '../components/games/GameCard'
 import { Button } from '../components/ui/Button'
@@ -11,9 +13,11 @@ import { ErrorMessage } from '../components/ui/ErrorMessage'
 import type { GameWithTeams, Tournament, Team } from '../types/database'
 
 export function Jogos() {
+  const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
   const [editingGame, setEditingGame] = useState<GameWithTeams | null>(null)
   const [deleteGame, setDeleteGame] = useState<GameWithTeams | null>(null)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [teamA, setTeamA] = useState<Team | null>(null)
   const [teamB, setTeamB] = useState<Team | null>(null)
@@ -25,6 +29,7 @@ export function Jogos() {
   const createGame = useCreateGame()
   const updateGame = useUpdateGame()
   const deleteGameMutation = useDeleteGame()
+  const { isLoading: authLoading, session, isEditor } = useAuth()
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
@@ -43,7 +48,32 @@ export function Jogos() {
     setShowForm(false)
   }
 
+  const requireEditor = () => {
+    setPermissionError(null)
+
+    if (authLoading) return false
+
+    if (!session) {
+      navigate(`/login?redirectTo=${encodeURIComponent('/jogos')}`)
+      return false
+    }
+
+    if (!isEditor) {
+      setPermissionError('Sua conta nao tem permissao para criar ou editar jogos.')
+      return false
+    }
+
+    return true
+  }
+
+  const handleCreateClick = () => {
+    if (!requireEditor()) return
+    resetForm()
+    setShowForm(true)
+  }
+
   const handleEdit = (game: GameWithTeams) => {
+    if (!requireEditor()) return
     setEditingGame(game)
     setSelectedTournament(game.tournament)
     setTeamA(game.team_a)
@@ -54,6 +84,7 @@ export function Jogos() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedTournament || !teamA || !teamB) return
+    if (!requireEditor()) return
     try {
       const payload = {
         tournament_id: selectedTournament.id,
@@ -76,6 +107,7 @@ export function Jogos() {
   return (
     <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
       <h1 className="text-2xl font-black text-gray-900">Jogos</h1>
+      {permissionError && <ErrorMessage message={permissionError} />}
 
       {showForm ? (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
@@ -152,10 +184,7 @@ export function Jogos() {
           </div>
         </form>
       ) : (
-        <Button onClick={() => {
-          resetForm()
-          setShowForm(true)
-        }} className="w-full" size="lg">
+        <Button onClick={handleCreateClick} className="w-full" size="lg" loading={authLoading}>
           + Novo jogo
         </Button>
       )}
@@ -182,7 +211,10 @@ export function Jogos() {
                 ).length,
               }}
               onEdit={handleEdit}
-              onDelete={setDeleteGame}
+              onDelete={(game) => {
+                if (!requireEditor()) return
+                setDeleteGame(game)
+              }}
             />
           ))
         )}
@@ -193,6 +225,7 @@ export function Jogos() {
         onClose={() => setDeleteGame(null)}
         onConfirm={async () => {
           if (!deleteGame) return
+          if (!requireEditor()) return
           await deleteGameMutation.mutateAsync(deleteGame.id)
           setDeleteGame(null)
         }}
