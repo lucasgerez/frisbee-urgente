@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useGame } from '../hooks/useGames'
 import { useGameGoals, useCreateGoal } from '../hooks/useGoals'
 import { useGameDefenses, useCreateDefense } from '../hooks/useDefenses'
 import { usePlayers } from '../hooks/usePlayers'
 import { useUpdateGameStatus } from '../hooks/useGames'
 import { useGameTimer } from '../hooks/useGameTimer'
+import { useAuth } from '../hooks/useAuth'
 import { GoalModal } from '../components/games/GoalModal'
 import { DefenseModal } from '../components/games/DefenseModal'
 import { Button } from '../components/ui/Button'
@@ -17,8 +18,11 @@ import { getPlayerDisplayName } from '../lib/players'
 
 export function JogoAnotar() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [goalOpen, setGoalOpen] = useState(false)
   const [defenseOpen, setDefenseOpen] = useState(false)
+  const { isLoading: authLoading, session, isEditor } = useAuth()
 
   const { data: game, isLoading: gameLoading, error: gameError } = useGame(id)
   const { data: goals = [] } = useGameGoals(id)
@@ -31,8 +35,24 @@ export function JogoAnotar() {
   const updateStatus = useUpdateGameStatus()
   const { display: timerDisplay } = useGameTimer(game)
 
-  if (gameLoading) return <LoadingScreen />
+  useEffect(() => {
+    if (!authLoading && !session) {
+      navigate(`/login?redirectTo=${encodeURIComponent(location.pathname)}`, { replace: true })
+    }
+  }, [authLoading, location.pathname, navigate, session])
+
+  if (authLoading || gameLoading || !session) return <LoadingScreen />
   if (gameError || !game) return <ErrorMessage message="Jogo não encontrado" className="m-4" />
+  if (!isEditor) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+        <ErrorMessage message="Sua conta nao tem permissao para anotar ou editar este jogo." />
+        <Link to={`/jogos/${id}`} className="block text-center text-sm font-medium text-cobalt-700">
+          Voltar para estatisticas
+        </Link>
+      </div>
+    )
+  }
 
   const scoreA = goals.filter((g) => g.scoring_team_id === game.team_a_id).length
   const scoreB = goals.filter((g) => g.scoring_team_id === game.team_b_id).length

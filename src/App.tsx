@@ -6,6 +6,7 @@ import { Torneios } from './pages/Torneios'
 import { Jogos } from './pages/Jogos'
 import { JogoView } from './pages/JogoView'
 import { JogoAnotar } from './pages/JogoAnotar'
+import { Login } from './pages/Login'
 
 const router = createBrowserRouter([
   {
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { path: 'jogos', element: <Jogos /> },
       { path: 'jogos/:id', element: <JogoView /> },
       { path: 'jogos/:id/anotar', element: <JogoAnotar /> },
+      { path: 'login', element: <Login /> },
     ],
   },
 ])

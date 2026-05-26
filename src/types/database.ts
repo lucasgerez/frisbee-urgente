@@ -61,6 +61,13 @@ export interface Defense {
   created_at: string
 }
 
+export interface Profile {
+  id: string
+  full_name: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ─── Joined / UI shapes ───────────────────────────────────────────────────────
 
 export interface GameWithTeams extends Game {
@@ -118,6 +125,11 @@ export type Database = {
         Row: Defense
         Insert: Omit<Defense, 'id' | 'created_at'>
         Update: Partial<Omit<Defense, 'id' | 'created_at'>>
+      }
+      profiles: {
+        Row: Profile
+        Insert: Omit<Profile, 'created_at' | 'updated_at'>
+        Update: Partial<Omit<Profile, 'created_at' | 'updated_at'>>
       }
     }
     Enums: {
