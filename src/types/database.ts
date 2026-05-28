@@ -24,6 +24,7 @@ export interface Player {
 export interface Tournament {
   id: string
   name: string
+  end_date: string | null
   created_at: string
 }
 
@@ -83,6 +84,17 @@ export interface SpiritScore {
   updated_at: string
 }
 
+export interface MatchMvp {
+  id: string
+  game_id: string
+  team_id: string
+  male_player_id: string
+  female_player_id: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
 // ─── Joined / UI shapes ───────────────────────────────────────────────────────
 
 export interface GameWithTeams extends Game {
@@ -103,6 +115,12 @@ export interface DefenseWithPlayer extends Defense {
 
 export interface SpiritScoreWithTeam extends SpiritScore {
   evaluated_team: Team
+}
+
+export interface MatchMvpWithPlayers extends MatchMvp {
+  team: Team
+  male_player: Player
+  female_player: Player
 }
 
 // ─── Supabase Database generic type ──────────────────────────────────────────
@@ -161,6 +179,11 @@ export type Database = {
         Row: SpiritScore
         Insert: Omit<SpiritScore, 'id' | 'created_at' | 'updated_at' | 'total_score'>
         Update: Partial<Omit<SpiritScore, 'id' | 'created_at' | 'updated_at' | 'total_score'>>
+      }
+      match_mvps: {
+        Row: MatchMvp
+        Insert: Omit<MatchMvp, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<MatchMvp, 'id' | 'created_at' | 'updated_at' | 'created_by'>>
       }
     }
     Views: {}

@@ -21,7 +21,7 @@ export interface TournamentStats {
   players: PlayerTournamentStats[]
 }
 
-export function useTournamentStats(tournamentId?: string) {
+export function useTournamentStats(tournamentId?: string, enabled = true) {
   return useQuery({
     queryKey: ['tournaments', tournamentId, 'stats'],
     queryFn: async (): Promise<TournamentStats> => {
@@ -95,6 +95,6 @@ export function useTournamentStats(tournamentId?: string) {
 
       return { players: Array.from(playerMap.values()) }
     },
-    enabled: !!tournamentId,
+    enabled: !!tournamentId && enabled,
   })
 }

@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useTournaments, useTournamentTeams } from '../hooks/useTournaments'
 import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
+import { usePlayers } from '../hooks/usePlayers'
 import { useSpiritScores } from '../hooks/useSpiritScores'
+import { useMatchMvp } from '../hooks/useMatchMvps'
 import { useAuth } from '../hooks/useAuth'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { GameCard } from '../components/games/GameCard'
 import { SpiritScoreModal } from '../components/games/SpiritScoreModal'
+import { MatchMvpModal } from '../components/games/MatchMvpModal'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
@@ -20,6 +23,7 @@ export function Jogos() {
   const [editingGame, setEditingGame] = useState<GameWithTeams | null>(null)
   const [deleteGame, setDeleteGame] = useState<GameWithTeams | null>(null)
   const [spiritGame, setSpiritGame] = useState<GameWithTeams | null>(null)
+  const [mvpGame, setMvpGame] = useState<GameWithTeams | null>(null)
   const [permissionError, setPermissionError] = useState<string | null>(null)
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [teamA, setTeamA] = useState<Team | null>(null)
@@ -32,8 +36,11 @@ export function Jogos() {
   const createGame = useCreateGame()
   const updateGame = useUpdateGame()
   const deleteGameMutation = useDeleteGame()
-  const { isLoading: authLoading, session, canManage, user } = useAuth()
+  const { isLoading: authLoading, session, canManage, user, isAdmin } = useAuth()
   const { data: spiritScores = [] } = useSpiritScores(spiritGame?.id, !!session && !!spiritGame)
+  const { data: matchMvp = null } = useMatchMvp(mvpGame?.id, !!mvpGame)
+  const { data: mvpPlayersA = [] } = usePlayers(mvpGame?.team_a_id)
+  const { data: mvpPlayersB = [] } = usePlayers(mvpGame?.team_b_id)
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
@@ -88,6 +95,11 @@ export function Jogos() {
   const handleSpiritScore = (game: GameWithTeams) => {
     if (!requireEditor()) return
     setSpiritGame(game)
+  }
+
+  const handleMatchMvp = (game: GameWithTeams) => {
+    if (!requireEditor()) return
+    setMvpGame(game)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -220,6 +232,7 @@ export function Jogos() {
                 ).length,
               }}
               onSpiritScore={handleSpiritScore}
+              onMatchMvp={handleMatchMvp}
               onEdit={handleEdit}
               onDelete={(game) => {
                 if (!requireEditor()) return
@@ -249,7 +262,19 @@ export function Jogos() {
         onClose={() => setSpiritGame(null)}
         game={spiritGame}
         currentUserId={user?.id ?? ''}
+        isAdmin={isAdmin}
         scores={spiritScores}
+      />
+
+      <MatchMvpModal
+        open={!!mvpGame}
+        onClose={() => setMvpGame(null)}
+        game={mvpGame}
+        playersA={mvpPlayersA}
+        playersB={mvpPlayersB}
+        currentUserId={user?.id ?? ''}
+        isAdmin={isAdmin}
+        mvp={matchMvp}
       />
     </div>
   )

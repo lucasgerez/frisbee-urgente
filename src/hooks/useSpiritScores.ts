@@ -13,6 +13,16 @@ export interface SpiritScorePayload {
   communication: number
 }
 
+export interface UpdateSpiritScorePayload {
+  id: string
+  game_id: string
+  rules_knowledge: number
+  fouls_contact: number
+  fairness: number
+  positive_attitude: number
+  communication: number
+}
+
 export function useSpiritScores(gameId?: string, enabled = true) {
   return useQuery({
     queryKey: ['games', gameId, 'spirit-scores'],
@@ -44,16 +54,14 @@ export function useAllSpiritScores(enabled = true) {
   })
 }
 
-export function useUpsertSpiritScore() {
+export function useCreateSpiritScore() {
   const qc = useQueryClient()
 
   return useMutation({
     mutationFn: async (payload: SpiritScorePayload) => {
       const { data, error } = await supabase
         .from('spirit_scores')
-        .upsert(payload, {
-          onConflict: 'game_id,evaluated_team_id,created_by',
-        })
+        .insert(payload)
         .select()
         .single()
       if (error) throw error
@@ -61,6 +69,41 @@ export function useUpsertSpiritScore() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })
+    },
+  })
+}
+
+export function useUpdateSpiritScore() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: UpdateSpiritScorePayload) => {
+      const {
+        id,
+        rules_knowledge,
+        fouls_contact,
+        fairness,
+        positive_attitude,
+        communication,
+      } = payload
+      const { data, error } = await supabase
+        .from('spirit_scores')
+        .update({
+          rules_knowledge,
+          fouls_contact,
+          fairness,
+          positive_attitude,
+          communication,
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as SpiritScore
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })
+      qc.invalidateQueries({ queryKey: ['spirit-scores'] })
     },
   })
 }

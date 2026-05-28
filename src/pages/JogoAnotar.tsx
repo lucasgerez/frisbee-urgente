@@ -41,6 +41,7 @@ export function JogoAnotar() {
   const deleteDefense = useDeleteDefense()
   const updateStatus = useUpdateGameStatus()
   const { display: timerDisplay } = useGameTimer(game)
+  const { isLoading: authLoading, session, canManage } = useAuth()
 
   useEffect(() => {
     if (!authLoading && !session) {

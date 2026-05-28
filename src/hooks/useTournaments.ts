@@ -36,15 +36,17 @@ export function useCreateTournament() {
   return useMutation({
     mutationFn: async ({
       name,
+      end_date,
       teamIds,
     }: {
       name: string
+      end_date: string | null
       teamIds: string[]
     }) => {
       // Create tournament
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
-        .insert({ name })
+        .insert({ name, end_date })
         .select()
         .single()
       if (tErr) throw tErr
@@ -71,15 +73,17 @@ export function useUpdateTournament() {
     mutationFn: async ({
       id,
       name,
+      end_date,
       teamIds,
     }: {
       id: string
       name: string
+      end_date: string | null
       teamIds: string[]
     }) => {
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
-        .update({ name })
+        .update({ name, end_date })
         .eq('id', id)
         .select()
         .single()

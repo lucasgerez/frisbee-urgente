@@ -8,7 +8,8 @@ import {
 import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
-import { cn } from '../lib/utils'
+import { cn, formatDateOnly, isPastDate } from '../lib/utils'
+import { useAuth } from '../hooks/useAuth'
 import type { Team, Gender } from '../types/database'
 
 type Tab = 'total' | 'time'
@@ -122,17 +123,38 @@ export function TorneioEstatisticas() {
   const { data: tournaments = [], isLoading: tournamentLoading } =
     useTournaments()
   const { data: teams = [] } = useTournamentTeams(id)
-  const { data: stats, isLoading: statsLoading, error } = useTournamentStats(id)
+  const { isLoading: authLoading, isAdmin } = useAuth()
 
   const tournament = tournaments.find((t) => t.id === id)
+  const canViewStats = !!tournament && (isAdmin || isPastDate(tournament.end_date))
+  const { data: stats, isLoading: statsLoading, error } = useTournamentStats(id, canViewStats)
 
-  if (tournamentLoading || statsLoading) return <LoadingScreen />
+  if (tournamentLoading || authLoading || statsLoading) return <LoadingScreen />
   if (error)
     return (
       <ErrorMessage message="Erro ao carregar estatísticas" className="m-4" />
     )
   if (!tournament)
     return <ErrorMessage message="Torneio não encontrado" className="m-4" />
+  if (!canViewStats) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+        <Link
+          to="/torneios"
+          className="text-xs text-cobalt-600 font-medium hover:underline"
+        >
+          ← Torneios
+        </Link>
+        <ErrorMessage
+          message={
+            tournament.end_date
+              ? `As estatísticas deste torneio ficam públicas após ${formatDateOnly(tournament.end_date)}.`
+              : 'As estatísticas deste torneio estão disponíveis apenas para admins até uma data de término ser definida e passar.'
+          }
+        />
+      </div>
+    )
+  }
 
   const players = stats?.players ?? []
   const filtered =

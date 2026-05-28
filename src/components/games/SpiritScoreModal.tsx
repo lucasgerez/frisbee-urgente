@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { GameWithTeams, SpiritScoreWithTeam, Team } from '../../types/database'
-import { useUpsertSpiritScore } from '../../hooks/useSpiritScores'
+import { useCreateSpiritScore, useUpdateSpiritScore } from '../../hooks/useSpiritScores'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { ErrorMessage } from '../ui/ErrorMessage'
@@ -262,6 +262,7 @@ interface SpiritScoreModalProps {
   onClose: () => void
   game: GameWithTeams | null
   currentUserId: string
+  isAdmin: boolean
   scores: SpiritScoreWithTeam[]
 }
 
@@ -278,21 +279,25 @@ export function SpiritScoreModal({
   onClose,
   game,
   currentUserId,
+  isAdmin,
   scores,
 }: SpiritScoreModalProps) {
   const [evaluatedTeam, setEvaluatedTeam] = useState<Team | null>(null)
   const [categoryScores, setCategoryScores] = useState<Scores>(defaultScores)
   const [error, setError] = useState('')
-  const upsertSpiritScore = useUpsertSpiritScore()
+  const createSpiritScore = useCreateSpiritScore()
+  const updateSpiritScore = useUpdateSpiritScore()
 
   const teamOptions = useMemo(() => {
     if (!game) return []
     return [game.team_a, game.team_b]
   }, [game])
 
-  const currentScore = scores.find(
-    (score) => score.created_by === currentUserId && score.evaluated_team_id === evaluatedTeam?.id
-  )
+  const currentScore = scores.find((score) => {
+    if (score.evaluated_team_id !== evaluatedTeam?.id) return false
+    return isAdmin || score.created_by === currentUserId
+  })
+  const locked = !!currentScore && !isAdmin
 
   useEffect(() => {
     if (!open || !game) return
@@ -300,6 +305,11 @@ export function SpiritScoreModal({
     setCategoryScores(defaultScores)
     setError('')
   }, [open, game])
+
+  const handleTeamChange = (team: Team | null) => {
+    setEvaluatedTeam(team)
+    setError('')
+  }
 
   useEffect(() => {
     if (!currentScore) {
@@ -329,21 +339,50 @@ export function SpiritScoreModal({
 
     setError('')
     try {
-      await upsertSpiritScore.mutateAsync({
-        game_id: game.id,
-        evaluated_team_id: evaluatedTeam.id,
-        created_by: currentUserId,
-        ...categoryScores,
-      })
+      if (currentScore) {
+        if (!isAdmin) {
+          setError('Esta pontuação de espírito ja foi salva. Apenas admins podem corrigir.')
+          return
+        }
+        await updateSpiritScore.mutateAsync({
+          id: currentScore.id,
+          game_id: game.id,
+          ...categoryScores,
+        })
+      } else {
+        await createSpiritScore.mutateAsync({
+          game_id: game.id,
+          evaluated_team_id: evaluatedTeam.id,
+          created_by: currentUserId,
+          ...categoryScores,
+        })
+      }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar pontuação.')
+      const message = err instanceof Error ? err.message : 'Erro ao salvar pontuação.'
+      setError(
+        message.includes('duplicate key')
+          ? 'Esta pontuação de espírito ja foi salva. Apenas admins podem corrigir.'
+          : message
+      )
     }
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Espírito de jogo" className="sm:max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {currentScore && (
+          <div className={`rounded-xl border p-3 text-sm ${
+            locked
+              ? 'bg-amber-50 border-amber-100 text-amber-800'
+              : 'bg-cobalt-50 border-cobalt-100 text-cobalt-800'
+          }`}>
+            {locked
+              ? 'Pontuação ja salva para este time. Apenas admins podem corrigir.'
+              : 'Pontuação ja salva. Como admin, voce pode corrigir a selecao.'}
+          </div>
+        )}
+
         <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 space-y-3 text-sm text-gray-700">
           <div>
             <h3 className="font-black text-gray-900">PLANILHA DE PONTUAÇÃO DE ESPÍRITO DE JOGO</h3>
@@ -368,10 +407,11 @@ export function SpiritScoreModal({
           <SearchableSelect
             options={teamOptions}
             value={evaluatedTeam}
-            onChange={setEvaluatedTeam}
+            onChange={handleTeamChange}
             getLabel={(team) => team.name}
             getValue={(team) => team.id}
             placeholder="Selecionar time..."
+            disabled={locked}
           />
         </div>
 
@@ -388,6 +428,7 @@ export function SpiritScoreModal({
                     key={note}
                     type="button"
                     onClick={() => setCategoryScores((current) => ({ ...current, [category.key]: note }))}
+                    disabled={locked}
                     className={`h-10 rounded-xl text-sm font-black border transition-colors ${
                       categoryScores[category.key] === note
                         ? 'bg-cobalt-700 text-white border-cobalt-700'
@@ -435,11 +476,17 @@ export function SpiritScoreModal({
 
         <div className="flex gap-2">
           <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
-            Cancelar
+            {locked ? 'Fechar' : 'Cancelar'}
           </Button>
-          <Button type="submit" loading={upsertSpiritScore.isPending} className="flex-1">
-            Salvar pontuação
-          </Button>
+          {!locked && (
+            <Button
+              type="submit"
+              loading={createSpiritScore.isPending || updateSpiritScore.isPending}
+              className="flex-1"
+            >
+              {currentScore ? 'Salvar correção' : 'Salvar pontuação'}
+            </Button>
+          )}
         </div>
       </form>
     </Modal>

@@ -7,11 +7,12 @@ interface GameCardProps {
   game: GameWithTeams
   goalCounts?: { teamA: number; teamB: number }
   onSpiritScore?: (game: GameWithTeams) => void
+  onMatchMvp?: (game: GameWithTeams) => void
   onEdit?: (game: GameWithTeams) => void
   onDelete?: (game: GameWithTeams) => void
 }
 
-export function GameCard({ game, goalCounts, onSpiritScore, onEdit, onDelete }: GameCardProps) {
+export function GameCard({ game, goalCounts, onSpiritScore, onMatchMvp, onEdit, onDelete }: GameCardProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <Link
@@ -50,7 +51,7 @@ export function GameCard({ game, goalCounts, onSpiritScore, onEdit, onDelete }: 
         </div>
       </Link>
 
-      {(onSpiritScore || onEdit || onDelete) && (
+      {(onSpiritScore || onMatchMvp || onEdit || onDelete) && (
         <div className="flex border-t border-gray-100">
           {onSpiritScore && (
             <button
@@ -59,6 +60,15 @@ export function GameCard({ game, goalCounts, onSpiritScore, onEdit, onDelete }: 
               className="flex-1 px-3 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
             >
               Espírito
+            </button>
+          )}
+          {onMatchMvp && (
+            <button
+              type="button"
+              onClick={() => onMatchMvp(game)}
+              className="flex-1 px-3 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors border-l border-gray-100"
+            >
+              MVP
             </button>
           )}
           {onEdit && (

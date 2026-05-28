@@ -6,6 +6,7 @@ import { useGames } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
 import { useDefenses } from '../hooks/useDefenses'
 import { useAllSpiritScores } from '../hooks/useSpiritScores'
+import { useAllMatchMvps } from '../hooks/useMatchMvps'
 import {
   useTournaments,
   useTournamentTeams,
@@ -19,10 +20,10 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { GameStatusBadge } from '../components/ui/Badge'
-import { formatDate, formatDateTime, scoreColorClass } from '../lib/utils'
+import { formatDate, formatDateOnly, formatDateTime, isPastDate, scoreColorClass } from '../lib/utils'
 import { getPlayerDisplayName } from '../lib/players'
 import { useAuth } from '../hooks/useAuth'
-import type { DefenseWithPlayer, GameWithTeams, Gender, GoalWithPlayers, SpiritScoreWithTeam, Team, Tournament } from '../types/database'
+import type { DefenseWithPlayer, GameWithTeams, Gender, GoalWithPlayers, MatchMvpWithPlayers, SpiritScoreWithTeam, Team, Tournament } from '../types/database'
 
 interface PlayerTournamentStats {
   playerId: string
@@ -41,6 +42,13 @@ interface SpiritTournamentTeamStats {
   teamName: string
   scoreCount: number
   totalScore: number
+}
+
+interface MvpTournamentPlayerStats {
+  playerId: string
+  playerName: string
+  gender: Gender
+  count: number
 }
 
 function computePlayerTournamentStats(
@@ -278,16 +286,91 @@ function SpiritStatsSection({
   )
 }
 
+function computeMvpTournamentStats(
+  tournamentGames: GameWithTeams[],
+  matchMvps: MatchMvpWithPlayers[]
+): MvpTournamentPlayerStats[] {
+  const gameIds = new Set(tournamentGames.map((game) => game.id))
+  const stats = new Map<string, MvpTournamentPlayerStats>()
+
+  const addMvp = (playerId: string, playerName: string, gender: Gender) => {
+    const current = stats.get(playerId) ?? {
+      playerId,
+      playerName,
+      gender,
+      count: 0,
+    }
+    current.count += 1
+    stats.set(playerId, current)
+  }
+
+  matchMvps
+    .filter((mvp) => gameIds.has(mvp.game_id))
+    .forEach((mvp) => {
+      addMvp(mvp.male_player_id, getPlayerDisplayName(mvp.male_player), mvp.male_player.gender)
+      addMvp(mvp.female_player_id, getPlayerDisplayName(mvp.female_player), mvp.female_player.gender)
+    })
+
+  return Array.from(stats.values()).sort((a, b) => {
+    const countDiff = b.count - a.count
+    if (countDiff !== 0) return countDiff
+    return a.playerName.localeCompare(b.playerName)
+  })
+}
+
+function MvpStatsSection({
+  gender,
+  stats,
+}: {
+  gender: Gender
+  stats: MvpTournamentPlayerStats[]
+}) {
+  const rows = stats.filter((playerStats) => playerStats.gender === gender)
+
+  return (
+    <div className="rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-gray-50 px-3 py-2 text-xs font-black text-gray-700">
+        {gender}
+      </div>
+      {rows.length === 0 ? (
+        <div className="px-3 py-3 text-sm text-gray-400">
+          Nenhum MVP registrado.
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          <div className="grid grid-cols-[1fr_64px] gap-2 px-3 py-2 text-[11px] font-black text-gray-400 uppercase">
+            <span>Jogador</span>
+            <span className="text-center">MVPs</span>
+          </div>
+          {rows.map((playerStats) => (
+            <div
+              key={playerStats.playerId}
+              className="grid grid-cols-[1fr_64px] gap-2 px-3 py-2 text-sm items-center"
+            >
+              <span className="font-medium text-gray-900 truncate">
+                {playerStats.playerName}
+              </span>
+              <span className="text-center font-black text-amber-700">{playerStats.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Torneios() {
   const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null)
   const [name, setName] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [selectedTeams, setSelectedTeams] = useState<Team[]>([])
   const [deleteTournament, setDeleteTournament] = useState<Tournament | null>(null)
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null)
   const [expandedStatsTournamentId, setExpandedStatsTournamentId] = useState<string | null>(null)
   const [expandedSpiritStatsTournamentId, setExpandedSpiritStatsTournamentId] = useState<string | null>(null)
+  const [expandedMvpStatsTournamentId, setExpandedMvpStatsTournamentId] = useState<string | null>(null)
   const [statsSortKey, setStatsSortKey] = useState<StatsSortKey>('goals')
   const [statsSortDirection, setStatsSortDirection] = useState<SortDirection>('desc')
   const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -306,7 +389,12 @@ export function Torneios() {
     data: spiritScores = [],
     isLoading: spiritScoresLoading,
     error: spiritScoresError,
-  } = useAllSpiritScores(isAdmin)
+  } = useAllSpiritScores()
+  const {
+    data: matchMvps = [],
+    isLoading: matchMvpsLoading,
+    error: matchMvpsError,
+  } = useAllMatchMvps()
 
   const requireEditor = () => {
     setPermissionError(null)
@@ -332,6 +420,7 @@ export function Torneios() {
 
   const resetForm = () => {
     setName('')
+    setEndDate('')
     setSelectedTeams([])
     setEditingTournament(null)
     setShowForm(false)
@@ -341,6 +430,7 @@ export function Torneios() {
     if (!requireEditor()) return
     setEditingTournament(tournament)
     setName(tournament.name)
+    setEndDate(tournament.end_date ?? '')
     setSelectedTeams([])
     setShowForm(true)
   }
@@ -362,6 +452,7 @@ export function Torneios() {
     try {
       const payload = {
         name: name.trim(),
+        end_date: endDate || null,
         teamIds: selectedTeams.map((t) => t.id),
       }
       if (editingTournament) {
@@ -396,6 +487,19 @@ export function Torneios() {
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Copa Frisbee 2025"
               autoFocus
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-cobalt-600 focus:ring-2 focus:ring-cobalt-600/20"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Data de término{' '}
+              <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-cobalt-600 focus:ring-2 focus:ring-cobalt-600/20"
             />
           </div>
@@ -460,9 +564,12 @@ export function Torneios() {
             const isExpanded = expandedTournamentId === tournament.id
             const statsExpanded = expandedStatsTournamentId === tournament.id
             const spiritStatsExpanded = expandedSpiritStatsTournamentId === tournament.id
+            const mvpStatsExpanded = expandedMvpStatsTournamentId === tournament.id
+            const canViewStats = isAdmin || isPastDate(tournament.end_date)
             const statsLoading = gamesLoading || goalsLoading || defensesLoading
             const statsError = gamesError || goalsError || defensesError
             const spiritStats = computeSpiritTournamentStats(tournamentGames, spiritScores)
+            const mvpStats = computeMvpTournamentStats(tournamentGames, matchMvps)
 
             return (
               <div
@@ -475,6 +582,11 @@ export function Torneios() {
                     <div className="text-xs text-gray-400 mt-0.5">
                       Criado em {formatDate(tournament.created_at)}
                     </div>
+                    {tournament.end_date && (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        Termina em {formatDateOnly(tournament.end_date)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <Button
@@ -517,17 +629,19 @@ export function Torneios() {
                   {isExpanded ? 'Ocultar jogos' : `Ver jogos (${tournamentGames.length})`}
                 </Button>
 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setExpandedStatsTournamentId(statsExpanded ? null : tournament.id)}
-                  className="w-full"
-                >
-                  {statsExpanded ? 'Ocultar estatísticas' : 'Ver estatísticas'}
-                </Button>
+                {canViewStats && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setExpandedStatsTournamentId(statsExpanded ? null : tournament.id)}
+                    className="w-full"
+                  >
+                    {statsExpanded ? 'Ocultar estatísticas' : 'Ver estatísticas'}
+                  </Button>
+                )}
 
-                {isAdmin && (
+                {canViewStats && (
                   <Button
                     type="button"
                     variant="secondary"
@@ -539,7 +653,19 @@ export function Torneios() {
                   </Button>
                 )}
 
-                {statsExpanded && (
+                {canViewStats && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setExpandedMvpStatsTournamentId(mvpStatsExpanded ? null : tournament.id)}
+                    className="w-full"
+                  >
+                    {mvpStatsExpanded ? 'Ocultar estatísticas de MVP' : 'Ver estatísticas de MVP'}
+                  </Button>
+                )}
+
+                {canViewStats && statsExpanded && (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     <div className="bg-gray-900 text-white px-3 py-2 text-xs font-black tracking-wide">
                       ESTATÍSTICAS DO CAMPEONATO
@@ -577,7 +703,7 @@ export function Torneios() {
                   </div>
                 )}
 
-                {isAdmin && spiritStatsExpanded && (
+                {canViewStats && spiritStatsExpanded && (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     <div className="bg-emerald-800 text-white px-3 py-2 text-xs font-black tracking-wide">
                       ESTATÍSTICAS DE ESPÍRITO
@@ -597,6 +723,32 @@ export function Torneios() {
                       </div>
                     ) : (
                       <SpiritStatsSection stats={spiritStats} gamesCount={tournamentGames.length} />
+                    )}
+                  </div>
+                )}
+
+                {canViewStats && mvpStatsExpanded && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="bg-amber-700 text-white px-3 py-2 text-xs font-black tracking-wide">
+                      ESTATÍSTICAS DE MVP
+                    </div>
+                    {matchMvpsLoading ? (
+                      <div className="text-sm text-gray-400 text-center py-3">
+                        Carregando estatísticas de MVP...
+                      </div>
+                    ) : matchMvpsError ? (
+                      <div className="p-3">
+                        <ErrorMessage message="Erro ao carregar estatísticas de MVP" />
+                      </div>
+                    ) : mvpStats.length === 0 ? (
+                      <div className="text-sm text-gray-400 text-center py-3">
+                        Nenhum MVP registrado neste torneio.
+                      </div>
+                    ) : (
+                      <div className="p-3 space-y-3">
+                        <MvpStatsSection gender="Masculino" stats={mvpStats} />
+                        <MvpStatsSection gender="Feminino" stats={mvpStats} />
+                      </div>
                     )}
                   </div>
                 )}
