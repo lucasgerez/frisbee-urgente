@@ -384,7 +384,7 @@ export function Torneios() {
   const createTournament = useCreateTournament()
   const updateTournament = useUpdateTournament()
   const deleteTournamentMutation = useDeleteTournament()
-  const { isLoading: authLoading, session, canManage, isAdmin } = useAuth()
+  const { isLoading: authLoading, session, canManage, isEditor, isAdmin } = useAuth()
   const {
     data: spiritScores = [],
     isLoading: spiritScoresLoading,
@@ -395,6 +395,7 @@ export function Torneios() {
     isLoading: matchMvpsLoading,
     error: matchMvpsError,
   } = useAllMatchMvps()
+  const canEditActions = isEditor || isAdmin
 
   const requireEditor = () => {
     setPermissionError(null)
@@ -408,6 +409,24 @@ export function Torneios() {
 
     if (!canManage) {
       setPermissionError('Sua conta nao tem permissao para criar ou editar torneios.')
+      return false
+    }
+
+    return true
+  }
+
+  const requireAdmin = () => {
+    setPermissionError(null)
+
+    if (authLoading) return false
+
+    if (!session) {
+      navigate(`/login?redirectTo=${encodeURIComponent('/torneios')}`)
+      return false
+    }
+
+    if (!isAdmin) {
+      setPermissionError('Sua conta nao tem permissao para excluir torneios.')
       return false
     }
 
@@ -588,35 +607,41 @@ export function Torneios() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(tournament)}
-                      className="!px-2 text-cobalt-700 hover:!bg-cobalt-50"
-                      aria-label={`Editar ${tournament.name}`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        if (!requireEditor()) return
-                        setDeleteTournament(tournament)
-                      }}
-                      className="!px-2 text-red-500 hover:!bg-red-50"
-                      aria-label={`Excluir ${tournament.name}`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </Button>
-                  </div>
+                  {(canEditActions || isAdmin) && (
+                    <div className="flex gap-1 shrink-0">
+                      {canEditActions && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(tournament)}
+                          className="!px-2 text-cobalt-700 hover:!bg-cobalt-50"
+                          aria-label={`Editar ${tournament.name}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!requireAdmin()) return
+                            setDeleteTournament(tournament)
+                          }}
+                          className="!px-2 text-red-500 hover:!bg-red-50"
+                          aria-label={`Excluir ${tournament.name}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <Button
@@ -826,7 +851,7 @@ export function Torneios() {
         onClose={() => setDeleteTournament(null)}
         onConfirm={async () => {
           if (!deleteTournament) return
-          if (!requireEditor()) return
+          if (!requireAdmin()) return
           await deleteTournamentMutation.mutateAsync(deleteTournament.id)
           setDeleteTournament(null)
         }}

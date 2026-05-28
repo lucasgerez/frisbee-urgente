@@ -36,7 +36,7 @@ export function Jogos() {
   const createGame = useCreateGame()
   const updateGame = useUpdateGame()
   const deleteGameMutation = useDeleteGame()
-  const { isLoading: authLoading, session, canManage, user, isAdmin } = useAuth()
+  const { isLoading: authLoading, session, canManage, user, isEditor, isAdmin } = useAuth()
   const { data: spiritScores = [] } = useSpiritScores(spiritGame?.id, !!session && !!spiritGame)
   const { data: matchMvp = null } = useMatchMvp(mvpGame?.id, !!mvpGame)
   const { data: mvpPlayersA = [] } = usePlayers(mvpGame?.team_a_id)
@@ -44,6 +44,7 @@ export function Jogos() {
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
+  const canEditActions = isEditor || isAdmin
 
   const handleTournamentChange = (t: Tournament | null) => {
     setSelectedTournament(t)
@@ -71,6 +72,24 @@ export function Jogos() {
 
     if (!canManage) {
       setPermissionError('Sua conta nao tem permissao para criar ou editar jogos.')
+      return false
+    }
+
+    return true
+  }
+
+  const requireAdmin = () => {
+    setPermissionError(null)
+
+    if (authLoading) return false
+
+    if (!session) {
+      navigate(`/login?redirectTo=${encodeURIComponent('/jogos')}`)
+      return false
+    }
+
+    if (!isAdmin) {
+      setPermissionError('Sua conta nao tem permissao para excluir jogos.')
       return false
     }
 
@@ -231,13 +250,13 @@ export function Jogos() {
                   (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_b_id
                 ).length,
               }}
-              onSpiritScore={handleSpiritScore}
-              onMatchMvp={handleMatchMvp}
-              onEdit={handleEdit}
-              onDelete={(game) => {
-                if (!requireEditor()) return
+              onSpiritScore={canEditActions ? handleSpiritScore : undefined}
+              onMatchMvp={canEditActions ? handleMatchMvp : undefined}
+              onEdit={canEditActions ? handleEdit : undefined}
+              onDelete={isAdmin ? (game) => {
+                if (!requireAdmin()) return
                 setDeleteGame(game)
-              }}
+              } : undefined}
             />
           ))
         )}
@@ -248,7 +267,7 @@ export function Jogos() {
         onClose={() => setDeleteGame(null)}
         onConfirm={async () => {
           if (!deleteGame) return
-          if (!requireEditor()) return
+          if (!requireAdmin()) return
           await deleteGameMutation.mutateAsync(deleteGame.id)
           setDeleteGame(null)
         }}
