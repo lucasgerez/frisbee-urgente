@@ -5,16 +5,13 @@ alter table goals enable row level security;
 alter table defenses enable row level security;
 
 drop policy if exists "games are publicly readable" on games;
-drop policy if exists "games are writable by edito users" on games;
 drop policy if exists "games are writable by editor users" on games;
 drop policy if exists "goals are publicly readable" on goals;
-drop policy if exists "goals are writable by edito users" on goals;
 drop policy if exists "goals are writable by editor users" on goals;
 drop policy if exists "defenses are publicly readable" on defenses;
-drop policy if exists "defenses are writable by edito users" on defenses;
 drop policy if exists "defenses are writable by editor users" on defenses;
 
-drop function if exists public.is_edito();
+drop function if exists public.is_editor();
 
 create or replace function public.is_editor()
 returns boolean
