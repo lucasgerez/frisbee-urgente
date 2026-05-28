@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { Button } from '../ui/Button'
 
 export function Header() {
-  const { user, profile, isEditor, signOut } = useAuth()
+  const { user, profile, canManage, role, signOut } = useAuth()
   const [signOutError, setSignOutError] = useState<string | null>(null)
   const displayName =
     profile?.full_name ||
@@ -36,8 +36,8 @@ export function Header() {
           <div className="text-right leading-tight">
             <div className="text-xs font-semibold text-white truncate max-w-[140px]">{displayName}</div>
             <div className="text-[11px] text-gray-300 truncate max-w-[140px]">{user.email}</div>
-            <div className={`text-[11px] ${isEditor ? 'text-emerald-300' : 'text-amber-300'}`}>
-              {isEditor ? 'editor' : 'sem permissao'}
+            <div className={`text-[11px] ${canManage ? 'text-emerald-300' : 'text-amber-300'}`}>
+              {canManage ? role : 'sem permissao'}
             </div>
             {signOutError && <div className="text-[11px] text-red-300">{signOutError}</div>}
           </div>

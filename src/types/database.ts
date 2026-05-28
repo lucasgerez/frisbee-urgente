@@ -68,6 +68,21 @@ export interface Profile {
   updated_at: string
 }
 
+export interface SpiritScore {
+  id: string
+  game_id: string
+  evaluated_team_id: string
+  created_by: string
+  rules_knowledge: number
+  fouls_contact: number
+  fairness: number
+  positive_attitude: number
+  communication: number
+  total_score: number
+  created_at: string
+  updated_at: string
+}
+
 // ─── Joined / UI shapes ───────────────────────────────────────────────────────
 
 export interface GameWithTeams extends Game {
@@ -84,6 +99,10 @@ export interface GoalWithPlayers extends Goal {
 
 export interface DefenseWithPlayer extends Defense {
   player: Player
+}
+
+export interface SpiritScoreWithTeam extends SpiritScore {
+  evaluated_team: Team
 }
 
 // ─── Supabase Database generic type ──────────────────────────────────────────
@@ -137,6 +156,11 @@ export type Database = {
         Row: Profile
         Insert: Omit<Profile, 'created_at' | 'updated_at'>
         Update: Partial<Omit<Profile, 'created_at' | 'updated_at'>>
+      }
+      spirit_scores: {
+        Row: SpiritScore
+        Insert: Omit<SpiritScore, 'id' | 'created_at' | 'updated_at' | 'total_score'>
+        Update: Partial<Omit<SpiritScore, 'id' | 'created_at' | 'updated_at' | 'total_score'>>
       }
     }
     Views: {}

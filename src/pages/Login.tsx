@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 export function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isLoading, isEditor, session, user, profile, signOut } = useAuth()
+  const { isLoading, canManage, session, user, profile, role, signOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,10 +18,10 @@ export function Login() {
   const redirectTo = searchParams.get('redirectTo') || '/jogos'
 
   useEffect(() => {
-    if (!isLoading && session && isEditor) {
+    if (!isLoading && session && canManage) {
       navigate(redirectTo, { replace: true })
     }
-  }, [isLoading, isEditor, navigate, redirectTo, session])
+  }, [isLoading, canManage, navigate, redirectTo, session])
 
   if (isLoading) return <LoadingScreen />
 
@@ -42,7 +42,8 @@ export function Login() {
       return
     }
 
-    if (data.session?.user.app_metadata?.role !== 'editor') {
+    const nextRole = data.session?.user.app_metadata?.role
+    if (nextRole !== 'editor' && nextRole !== 'admin') {
       setError('Sua conta não tem permissão de editor.')
       return
     }
@@ -99,7 +100,7 @@ export function Login() {
           />
         </div>
 
-        {session && !isEditor && (
+        {session && !canManage && (
           <ErrorMessage message="Sua conta esta autenticada, mas nao tem permissao de editor." />
         )}
         {error && <ErrorMessage message={error} />}
@@ -107,7 +108,7 @@ export function Login() {
           <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700 space-y-1">
             <div><span className="font-semibold">Usuario:</span> {profile?.full_name || user.email}</div>
             <div><span className="font-semibold">Email:</span> {user.email}</div>
-            <div><span className="font-semibold">Role:</span> {isEditor ? 'editor' : 'sem permissao'}</div>
+            <div><span className="font-semibold">Role:</span> {role ?? 'sem permissao'}</div>
           </div>
         )}
 

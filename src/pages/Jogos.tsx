@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useTournaments, useTournamentTeams } from '../hooks/useTournaments'
 import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
+import { useSpiritScores } from '../hooks/useSpiritScores'
 import { useAuth } from '../hooks/useAuth'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { GameCard } from '../components/games/GameCard'
+import { SpiritScoreModal } from '../components/games/SpiritScoreModal'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
@@ -17,6 +19,7 @@ export function Jogos() {
   const [showForm, setShowForm] = useState(false)
   const [editingGame, setEditingGame] = useState<GameWithTeams | null>(null)
   const [deleteGame, setDeleteGame] = useState<GameWithTeams | null>(null)
+  const [spiritGame, setSpiritGame] = useState<GameWithTeams | null>(null)
   const [permissionError, setPermissionError] = useState<string | null>(null)
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [teamA, setTeamA] = useState<Team | null>(null)
@@ -29,7 +32,8 @@ export function Jogos() {
   const createGame = useCreateGame()
   const updateGame = useUpdateGame()
   const deleteGameMutation = useDeleteGame()
-  const { isLoading: authLoading, session, isEditor } = useAuth()
+  const { isLoading: authLoading, session, canManage, user } = useAuth()
+  const { data: spiritScores = [] } = useSpiritScores(spiritGame?.id, !!session && !!spiritGame)
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
@@ -58,7 +62,7 @@ export function Jogos() {
       return false
     }
 
-    if (!isEditor) {
+    if (!canManage) {
       setPermissionError('Sua conta nao tem permissao para criar ou editar jogos.')
       return false
     }
@@ -79,6 +83,11 @@ export function Jogos() {
     setTeamA(game.team_a)
     setTeamB(game.team_b)
     setShowForm(true)
+  }
+
+  const handleSpiritScore = (game: GameWithTeams) => {
+    if (!requireEditor()) return
+    setSpiritGame(game)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -210,6 +219,7 @@ export function Jogos() {
                   (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_b_id
                 ).length,
               }}
+              onSpiritScore={handleSpiritScore}
               onEdit={handleEdit}
               onDelete={(game) => {
                 if (!requireEditor()) return
@@ -232,6 +242,14 @@ export function Jogos() {
         title="Excluir jogo"
         message={`Tem certeza que deseja excluir "${deleteGame?.team_a.name} × ${deleteGame?.team_b.name}"? Gols e defesas desse jogo tambem serão removidos.`}
         loading={deleteGameMutation.isPending}
+      />
+
+      <SpiritScoreModal
+        open={!!spiritGame}
+        onClose={() => setSpiritGame(null)}
+        game={spiritGame}
+        currentUserId={user?.id ?? ''}
+        scores={spiritScores}
       />
     </div>
   )

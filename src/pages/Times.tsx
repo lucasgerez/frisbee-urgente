@@ -22,7 +22,7 @@ export function Times() {
   const { data: players = [], isLoading: playersLoading } = usePlayers(selectedTeam?.id)
   const createTeam = useCreateTeam()
   const createPlayer = useCreatePlayer()
-  const { isLoading: authLoading, session, isEditor } = useAuth()
+  const { isLoading: authLoading, session, canManage } = useAuth()
 
   const requireEditor = () => {
     setPermissionError(null)
@@ -34,7 +34,7 @@ export function Times() {
       return false
     }
 
-    if (!isEditor) {
+    if (!canManage) {
       setPermissionError('Sua conta nao tem permissao para criar ou editar times e jogadores.')
       return false
     }
@@ -131,7 +131,7 @@ export function Times() {
               <PlayerList
                 players={players}
                 teamId={selectedTeam.id}
-                canEdit={!!session && isEditor}
+                canEdit={!!session && canManage}
                 onUnauthorized={() => {
                   requireEditor()
                 }}

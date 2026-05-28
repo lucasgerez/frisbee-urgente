@@ -6,11 +6,12 @@ import { formatDateTime, scoreColorClass } from '../../lib/utils'
 interface GameCardProps {
   game: GameWithTeams
   goalCounts?: { teamA: number; teamB: number }
+  onSpiritScore?: (game: GameWithTeams) => void
   onEdit?: (game: GameWithTeams) => void
   onDelete?: (game: GameWithTeams) => void
 }
 
-export function GameCard({ game, goalCounts, onEdit, onDelete }: GameCardProps) {
+export function GameCard({ game, goalCounts, onSpiritScore, onEdit, onDelete }: GameCardProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <Link
@@ -49,13 +50,22 @@ export function GameCard({ game, goalCounts, onEdit, onDelete }: GameCardProps) 
         </div>
       </Link>
 
-      {(onEdit || onDelete) && (
+      {(onSpiritScore || onEdit || onDelete) && (
         <div className="flex border-t border-gray-100">
+          {onSpiritScore && (
+            <button
+              type="button"
+              onClick={() => onSpiritScore(game)}
+              className="flex-1 px-3 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+            >
+              Espírito
+            </button>
+          )}
           {onEdit && (
             <button
               type="button"
               onClick={() => onEdit(game)}
-              className="flex-1 px-3 py-2.5 text-sm font-medium text-cobalt-700 hover:bg-cobalt-50 transition-colors"
+              className="flex-1 px-3 py-2.5 text-sm font-medium text-cobalt-700 hover:bg-cobalt-50 transition-colors border-l border-gray-100"
             >
               Editar
             </button>

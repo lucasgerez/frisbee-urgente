@@ -5,6 +5,7 @@ import { useTeams } from '../hooks/useTeams'
 import { useGames } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
 import { useDefenses } from '../hooks/useDefenses'
+import { useAllSpiritScores } from '../hooks/useSpiritScores'
 import {
   useTournaments,
   useTournamentTeams,
@@ -21,7 +22,7 @@ import { GameStatusBadge } from '../components/ui/Badge'
 import { formatDate, formatDateTime, scoreColorClass } from '../lib/utils'
 import { getPlayerDisplayName } from '../lib/players'
 import { useAuth } from '../hooks/useAuth'
-import type { DefenseWithPlayer, Gender, GoalWithPlayers, Team, Tournament } from '../types/database'
+import type { DefenseWithPlayer, GameWithTeams, Gender, GoalWithPlayers, SpiritScoreWithTeam, Team, Tournament } from '../types/database'
 
 interface PlayerTournamentStats {
   playerId: string
@@ -34,6 +35,13 @@ interface PlayerTournamentStats {
 
 type StatsSortKey = 'name' | 'goals' | 'assists' | 'defenses'
 type SortDirection = 'asc' | 'desc'
+
+interface SpiritTournamentTeamStats {
+  teamId: string
+  teamName: string
+  scoreCount: number
+  totalScore: number
+}
 
 function computePlayerTournamentStats(
   gameIds: Set<string>,
@@ -212,6 +220,64 @@ function PlayerStatsSection({
   )
 }
 
+function computeSpiritTournamentStats(
+  tournamentGames: GameWithTeams[],
+  spiritScores: SpiritScoreWithTeam[]
+): SpiritTournamentTeamStats[] {
+  const gameIds = new Set(tournamentGames.map((game) => game.id))
+  const stats = new Map<string, SpiritTournamentTeamStats>()
+
+  spiritScores
+    .filter((score) => gameIds.has(score.game_id))
+    .forEach((score) => {
+      const current = stats.get(score.evaluated_team_id) ?? {
+        teamId: score.evaluated_team_id,
+        teamName: score.evaluated_team.name,
+        scoreCount: 0,
+        totalScore: 0,
+      }
+
+      current.scoreCount += 1
+      current.totalScore += score.total_score
+      stats.set(score.evaluated_team_id, current)
+    })
+
+  return Array.from(stats.values()).sort((a, b) => b.totalScore - a.totalScore)
+}
+
+function SpiritStatsSection({
+  stats,
+  gamesCount,
+}: {
+  stats: SpiritTournamentTeamStats[]
+  gamesCount: number
+}) {
+  if (stats.length === 0) {
+    return (
+      <div className="text-sm text-gray-400 text-center py-3">
+        Nenhuma pontuação de espírito registrada neste torneio.
+      </div>
+    )
+  }
+
+  return (
+    <div className="divide-y divide-gray-100">
+      {stats.map((teamStats) => (
+        <div
+          key={teamStats.teamId}
+          className="grid grid-cols-[1fr_58px_72px] gap-2 px-3 py-2 text-sm items-center"
+        >
+          <span className="font-medium text-gray-900 truncate">{teamStats.teamName}</span>
+          <span className="text-center font-black text-cobalt-700">{teamStats.totalScore}</span>
+          <span className="text-center text-xs font-bold text-gray-500">
+            {teamStats.scoreCount}/{gamesCount}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function Torneios() {
   const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
@@ -221,6 +287,7 @@ export function Torneios() {
   const [deleteTournament, setDeleteTournament] = useState<Tournament | null>(null)
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null)
   const [expandedStatsTournamentId, setExpandedStatsTournamentId] = useState<string | null>(null)
+  const [expandedSpiritStatsTournamentId, setExpandedSpiritStatsTournamentId] = useState<string | null>(null)
   const [statsSortKey, setStatsSortKey] = useState<StatsSortKey>('goals')
   const [statsSortDirection, setStatsSortDirection] = useState<SortDirection>('desc')
   const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -234,7 +301,12 @@ export function Torneios() {
   const createTournament = useCreateTournament()
   const updateTournament = useUpdateTournament()
   const deleteTournamentMutation = useDeleteTournament()
-  const { isLoading: authLoading, session, isEditor } = useAuth()
+  const { isLoading: authLoading, session, canManage, isAdmin } = useAuth()
+  const {
+    data: spiritScores = [],
+    isLoading: spiritScoresLoading,
+    error: spiritScoresError,
+  } = useAllSpiritScores(isAdmin)
 
   const requireEditor = () => {
     setPermissionError(null)
@@ -246,7 +318,7 @@ export function Torneios() {
       return false
     }
 
-    if (!isEditor) {
+    if (!canManage) {
       setPermissionError('Sua conta nao tem permissao para criar ou editar torneios.')
       return false
     }
@@ -387,8 +459,10 @@ export function Torneios() {
             const tournamentStats = computePlayerTournamentStats(tournamentGameIds, goals, defenses)
             const isExpanded = expandedTournamentId === tournament.id
             const statsExpanded = expandedStatsTournamentId === tournament.id
+            const spiritStatsExpanded = expandedSpiritStatsTournamentId === tournament.id
             const statsLoading = gamesLoading || goalsLoading || defensesLoading
             const statsError = gamesError || goalsError || defensesError
+            const spiritStats = computeSpiritTournamentStats(tournamentGames, spiritScores)
 
             return (
               <div
@@ -453,6 +527,18 @@ export function Torneios() {
                   {statsExpanded ? 'Ocultar estatísticas' : 'Ver estatísticas'}
                 </Button>
 
+                {isAdmin && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setExpandedSpiritStatsTournamentId(spiritStatsExpanded ? null : tournament.id)}
+                    className="w-full"
+                  >
+                    {spiritStatsExpanded ? 'Ocultar estatísticas de espírito' : 'Ver estatísticas de espírito'}
+                  </Button>
+                )}
+
                 {statsExpanded && (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     <div className="bg-gray-900 text-white px-3 py-2 text-xs font-black tracking-wide">
@@ -487,6 +573,30 @@ export function Torneios() {
                           onSort={handleStatsSort}
                         />
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {isAdmin && spiritStatsExpanded && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="bg-emerald-800 text-white px-3 py-2 text-xs font-black tracking-wide">
+                      ESTATÍSTICAS DE ESPÍRITO
+                    </div>
+                    <div className="grid grid-cols-[1fr_58px_72px] gap-2 px-3 py-2 text-[11px] font-black text-gray-400 uppercase bg-gray-50">
+                      <span>Time avaliado</span>
+                      <span className="text-center">Total</span>
+                      <span className="text-center">Notas</span>
+                    </div>
+                    {spiritScoresLoading ? (
+                      <div className="text-sm text-gray-400 text-center py-3">
+                        Carregando estatísticas de espírito...
+                      </div>
+                    ) : spiritScoresError ? (
+                      <div className="p-3">
+                        <ErrorMessage message="Erro ao carregar estatísticas de espírito" />
+                      </div>
+                    ) : (
+                      <SpiritStatsSection stats={spiritStats} gamesCount={tournamentGames.length} />
                     )}
                   </div>
                 )}

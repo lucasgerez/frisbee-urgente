@@ -51,7 +51,7 @@ export function JogoAnotar() {
   if (authLoading || gameLoading) return <LoadingScreen />
   if (!session) return null
   if (gameError || !game) return <ErrorMessage message="Jogo não encontrado" className="m-4" />
-  if (!isEditor) {
+  if (!canManage) {
     return (
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
         <ErrorMessage message="Sua conta nao tem permissao para anotar ou editar este jogo." />

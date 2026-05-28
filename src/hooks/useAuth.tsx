@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { isEditorRole } from '../lib/auth'
+import { canManageRole, getUserRole, isAdminRole, isEditorRole } from '../lib/auth'
 import type { Profile } from '../types/database'
 
 interface AuthState {
@@ -11,6 +11,9 @@ interface AuthState {
   profile: Profile | null
   isLoading: boolean
   isEditor: boolean
+  isAdmin: boolean
+  canManage: boolean
+  role: string | null
   signOut: () => Promise<void>
 }
 
@@ -111,6 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       isLoading,
       isEditor: isEditorRole(session),
+      isAdmin: isAdminRole(session),
+      canManage: canManageRole(session),
+      role: getUserRole(session),
       signOut,
     }),
     [session, profile, isLoading]
