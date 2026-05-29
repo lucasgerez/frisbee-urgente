@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { useQueryClient } from '@tanstack/react-query'
+import { getPlayerDisplayName } from '../lib/players'
 
 export function JogoView() {
   const { id } = useParams<{ id: string }>()
@@ -79,13 +80,13 @@ export function JogoView() {
               <div key={goal.id} className="px-4 py-2.5 flex items-center gap-3">
                 <span className="text-gray-400 text-xs w-5 text-right shrink-0">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-gray-900">{goal.scorer.name}</span>
+                  <span className="text-sm font-medium text-gray-900">{getPlayerDisplayName(goal.scorer)}</span>
                   <span className={`ml-1 text-xs ${goal.scorer.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
                     ({goal.scorer.gender === 'Masculino' ? 'M' : 'F'})
                   </span>
                   {goal.assistant && (
                     <span className="text-xs text-gray-400 ml-1">
-                      · assist: {goal.assistant.name}
+                      · assist: {getPlayerDisplayName(goal.assistant)}
                     </span>
                   )}
                 </div>

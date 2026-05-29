@@ -23,6 +23,25 @@ export function formatDate(iso: string): string {
   })
 }
 
+export function formatDateOnly(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+export function isPastDate(date: string | null): boolean {
+  if (!date) return false
+  const today = new Date()
+  const todayKey = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-')
+  return date < todayKey
+}
+
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -31,4 +50,10 @@ export function formatDateTime(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+export function scoreColorClass(score: number, opponentScore: number): string {
+  if (score > opponentScore) return 'text-green-500'
+  if (score < opponentScore) return 'text-red-500'
+  return 'text-sky-400'
 }

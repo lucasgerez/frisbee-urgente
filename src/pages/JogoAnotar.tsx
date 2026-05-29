@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useGame } from '../hooks/useGames'
 import { useGameGoals, useCreateGoal, useDeleteGoal } from '../hooks/useGoals'
 import { useGameDefenses, useCreateDefense, useDeleteDefense } from '../hooks/useDefenses'
 import { usePlayers } from '../hooks/usePlayers'
 import { useUpdateGameStatus } from '../hooks/useGames'
 import { useGameTimer } from '../hooks/useGameTimer'
+import { useAuth } from '../hooks/useAuth'
 import { GoalModal } from '../components/games/GoalModal'
 import { DefenseModal } from '../components/games/DefenseModal'
 import { Button } from '../components/ui/Button'
@@ -13,9 +14,13 @@ import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { GameStatusBadge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { scoreColorClass } from '../lib/utils'
+import { getPlayerDisplayName } from '../lib/players'
 
 export function JogoAnotar() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [goalOpen, setGoalOpen] = useState(false)
   const [defenseOpen, setDefenseOpen] = useState(false)
   const [eventToDelete, setEventToDelete] = useState<
@@ -36,9 +41,27 @@ export function JogoAnotar() {
   const deleteDefense = useDeleteDefense()
   const updateStatus = useUpdateGameStatus()
   const { display: timerDisplay } = useGameTimer(game)
+  const { isLoading: authLoading, session, canManage } = useAuth()
 
-  if (gameLoading) return <LoadingScreen />
+  useEffect(() => {
+    if (!authLoading && !session) {
+      navigate(`/login?redirectTo=${encodeURIComponent(location.pathname)}`, { replace: true })
+    }
+  }, [authLoading, location.pathname, navigate, session])
+
+  if (authLoading || gameLoading) return <LoadingScreen />
+  if (!session) return null
   if (gameError || !game) return <ErrorMessage message="Jogo não encontrado" className="m-4" />
+  if (!canManage) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+        <ErrorMessage message="Sua conta nao tem permissao para anotar ou editar este jogo." />
+        <Link to={`/jogos/${id}`} className="block text-center text-sm font-medium text-cobalt-700">
+          Voltar para estatisticas
+        </Link>
+      </div>
+    )
+  }
 
   const scoreA = goals.filter((g) => g.scoring_team_id === game.team_a_id).length
   const scoreB = goals.filter((g) => g.scoring_team_id === game.team_b_id).length
@@ -97,7 +120,7 @@ export function JogoAnotar() {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex-1 text-center">
-            <div className="text-gold-400 font-black text-4xl">{scoreA}</div>
+            <div className={`font-black text-4xl ${scoreColorClass(scoreA, scoreB)}`}>{scoreA}</div>
             <div className="text-white text-xs font-bold mt-1 truncate">{game.team_a.name}</div>
           </div>
           <div className="flex flex-col items-center px-3">
@@ -106,7 +129,7 @@ export function JogoAnotar() {
             </div>
           </div>
           <div className="flex-1 text-center">
-            <div className="text-gold-400 font-black text-4xl">{scoreB}</div>
+            <div className={`font-black text-4xl ${scoreColorClass(scoreB, scoreA)}`}>{scoreB}</div>
             <div className="text-white text-xs font-bold mt-1 truncate">{game.team_b.name}</div>
           </div>
         </div>
@@ -213,14 +236,14 @@ export function JogoAnotar() {
                       {event.type === 'goal' && event.goal ? (
                         <>
                           <div className="text-sm font-medium text-gray-900 truncate">
-                            {event.goal.scorer.name}
+                            {getPlayerDisplayName(event.goal.scorer)}
                             <span className={`ml-1 text-xs ${event.goal.scorer.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
                               ({event.goal.scorer.gender === 'Masculino' ? 'M' : 'F'})
                             </span>
                           </div>
                           {event.goal.assistant && (
                             <div className="text-xs text-gray-400 truncate">
-                              Assist: {event.goal.assistant.name}
+                              Assist: {getPlayerDisplayName(event.goal.assistant)}
                             </div>
                           )}
                           <div className="text-xs text-gray-400">{event.goal.scoring_team.name}</div>
@@ -228,7 +251,7 @@ export function JogoAnotar() {
                       ) : event.defense ? (
                         <>
                           <div className="text-sm font-medium text-gray-900 truncate">
-                            {event.defense.player.name}
+                            {getPlayerDisplayName(event.defense.player)}
                             <span className={`ml-1 text-xs ${event.defense.player.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
                               ({event.defense.player.gender === 'Masculino' ? 'M' : 'F'})
                             </span>

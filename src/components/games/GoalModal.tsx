@@ -4,6 +4,7 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { SearchableSelect } from '../ui/SearchableSelect'
 import { ErrorMessage } from '../ui/ErrorMessage'
+import { getPlayerLabel } from '../../lib/players'
 
 interface GoalModalProps {
   open: boolean
@@ -107,7 +108,7 @@ export function GoalModal({
             options={players}
             value={scorer}
             onChange={setScorer}
-            getLabel={(p) => `${p.name} (${p.gender === 'Masculino' ? 'M' : 'F'})`}
+            getLabel={getPlayerLabel}
             getValue={(p) => p.id}
             placeholder="Buscar jogador..."
             clearable
@@ -123,7 +124,7 @@ export function GoalModal({
             options={players}
             value={assistant}
             onChange={setAssistant}
-            getLabel={(p) => `${p.name} (${p.gender === 'Masculino' ? 'M' : 'F'})`}
+            getLabel={getPlayerLabel}
             getValue={(p) => p.id}
             placeholder="Buscar jogador..."
             clearable

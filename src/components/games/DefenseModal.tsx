@@ -4,6 +4,7 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { SearchableSelect } from '../ui/SearchableSelect'
 import { ErrorMessage } from '../ui/ErrorMessage'
+import { getPlayerLabel } from '../../lib/players'
 
 interface DefenseModalProps {
   open: boolean
@@ -95,7 +96,7 @@ export function DefenseModal({
             options={players}
             value={player}
             onChange={setPlayer}
-            getLabel={(p) => `${p.name} (${p.gender === 'Masculino' ? 'M' : 'F'})`}
+            getLabel={getPlayerLabel}
             getValue={(p) => p.id}
             placeholder="Buscar jogador..."
             clearable

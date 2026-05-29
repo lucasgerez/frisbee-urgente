@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTeams, useCreateTeam } from '../hooks/useTeams'
 import { usePlayers, useCreatePlayer } from '../hooks/usePlayers'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
@@ -7,21 +8,44 @@ import { PlayerForm } from '../components/teams/PlayerForm'
 import { Button } from '../components/ui/Button'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
+import { useAuth } from '../hooks/useAuth'
 import type { Team } from '../types/database'
 
 export function Times() {
+  const navigate = useNavigate()
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
   const [newTeamName, setNewTeamName] = useState('')
   const [showNewTeam, setShowNewTeam] = useState(false)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
 
   const { data: teams = [], isLoading: teamsLoading, error: teamsError } = useTeams()
   const { data: players = [], isLoading: playersLoading } = usePlayers(selectedTeam?.id)
   const createTeam = useCreateTeam()
   const createPlayer = useCreatePlayer()
+  const { isLoading: authLoading, session, isAdmin } = useAuth()
+
+  const requireAdmin = () => {
+    setPermissionError(null)
+
+    if (authLoading) return false
+
+    if (!session) {
+      navigate(`/login?redirectTo=${encodeURIComponent('/times')}`)
+      return false
+    }
+
+    if (!isAdmin) {
+      setPermissionError('Sua conta nao tem permissao para criar ou editar times e jogadores.')
+      return false
+    }
+
+    return true
+  }
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTeamName.trim()) return
+    if (!requireAdmin()) return
     try {
       const team = await createTeam.mutateAsync(newTeamName.trim())
       setNewTeamName('')
@@ -37,9 +61,10 @@ export function Times() {
   return (
     <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
       <h1 className="text-2xl font-black text-gray-900">Times & Jogadores</h1>
+      {permissionError && <ErrorMessage message={permissionError} />}
 
       {/* Create team */}
-      {showNewTeam ? (
+      {isAdmin && showNewTeam ? (
         <form onSubmit={handleCreateTeam} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
           <h2 className="font-bold text-gray-800">Novo time</h2>
           <input
@@ -62,11 +87,19 @@ export function Times() {
             </Button>
           </div>
         </form>
-      ) : (
-        <Button onClick={() => setShowNewTeam(true)} className="w-full" size="lg">
+      ) : isAdmin ? (
+        <Button
+          onClick={() => {
+            if (!requireAdmin()) return
+            setShowNewTeam(true)
+          }}
+          className="w-full"
+          size="lg"
+          loading={authLoading}
+        >
           + Novo time
         </Button>
-      )}
+      ) : null}
 
       {/* Team selector */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
@@ -95,18 +128,28 @@ export function Times() {
             {playersLoading ? (
               <LoadingScreen />
             ) : (
-              <PlayerList players={players} teamId={selectedTeam.id} />
+              <PlayerList
+                players={players}
+                teamId={selectedTeam.id}
+                canEdit={!!session && isAdmin}
+                onUnauthorized={() => {
+                  requireAdmin()
+                }}
+              />
             )}
 
+            {isAdmin && (
             <div className="border-t border-gray-100 pt-3">
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Adicionar jogador</h3>
               <PlayerForm
                 teamId={selectedTeam.id}
                 onSubmit={async (data) => {
+                  if (!requireAdmin()) return
                   await createPlayer.mutateAsync(data)
                 }}
               />
             </div>
+            )}
           </div>
         )}
 
