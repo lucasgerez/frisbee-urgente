@@ -15,6 +15,7 @@ interface AuthState {
   isAdmin: boolean
   canManage: boolean
   role: string | null
+  signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -64,6 +65,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null
   }
 
+  const setSignedInState = async (nextSession: Session) => {
+    const requestId = authRequestId.current + 1
+    authRequestId.current = requestId
+    setIsLoading(true)
+    setSession(nextSession)
+
+    try {
+      const loadedProfile = await loadProfile(nextSession.user)
+      if (authRequestId.current === requestId) {
+        setProfile(loadedProfile)
+      }
+    } catch {
+      if (authRequestId.current === requestId) {
+        setProfile(null)
+      }
+    } finally {
+      if (authRequestId.current === requestId) {
+        setIsLoading(false)
+      }
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -72,12 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setSession(data.session)
         if (data.session?.user) {
-          const requestId = authRequestId.current + 1
-          authRequestId.current = requestId
-          const loadedProfile = await loadProfile(data.session.user)
-          if (isMounted && authRequestId.current === requestId) {
-            setProfile(loadedProfile)
-          }
+          await setSignedInState(data.session)
         } else {
           clearSignedOutState(false)
         }
@@ -98,19 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const requestId = authRequestId.current + 1
-      authRequestId.current = requestId
-      try {
-        setSession(nextSession)
-        const loadedProfile = await loadProfile(nextSession.user)
-        if (authRequestId.current === requestId) {
-          setProfile(loadedProfile)
-        }
-      } catch {
-        setProfile(null)
-      } finally {
-        setIsLoading(false)
-      }
+      await setSignedInState(nextSession)
     })
 
     return () => {
@@ -119,12 +125,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
-    clearSignedOutState()
+  const signIn = async (email: string, password: string) => {
+    setIsLoading(true)
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
     if (error) {
-      // Keep user logged out locally even if remote revocation fails.
-      console.error('Logout warning:', error.message)
+      setIsLoading(false)
+      throw error
+    }
+
+    if (!data.session) {
+      setIsLoading(false)
+      throw new Error('Sessao de login nao foi criada.')
+    }
+
+    await setSignedInState(data.session)
+  }
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      if (error) {
+        // Keep user logged out locally even if remote revocation fails.
+        console.error('Logout warning:', error.message)
+      }
+    } finally {
+      clearSignedOutState()
     }
   }
 
@@ -138,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminRole(session),
       canManage: canManageRole(session),
       role: getUserRole(session),
+      signIn,
       signOut,
     }),
     [session, profile, isLoading]

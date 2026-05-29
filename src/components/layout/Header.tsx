@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { Button } from '../ui/Button'
 
 export function Header() {
+  const navigate = useNavigate()
   const { user, profile, canManage, role, signOut } = useAuth()
   const [signOutError, setSignOutError] = useState<string | null>(null)
   const displayName =
@@ -48,6 +49,7 @@ export function Header() {
               setSignOutError(null)
               try {
                 await signOut()
+                navigate('/jogos', { replace: true })
               } catch (error) {
                 setSignOutError(error instanceof Error ? error.message : 'Falha ao sair')
               }

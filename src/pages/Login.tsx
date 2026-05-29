@@ -4,18 +4,23 @@ import { Button } from '../components/ui/Button'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { useAuth } from '../hooks/useAuth'
-import { supabase } from '../lib/supabase'
+
+function sanitizeRedirectTo(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/jogos'
+  if (value === '/login' || value.startsWith('/login?')) return '/jogos'
+  return value
+}
 
 export function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isLoading, session, user, profile, role, signOut } = useAuth()
+  const { isLoading, session, user, profile, role, signIn, signOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const redirectTo = searchParams.get('redirectTo') || '/jogos'
+  const redirectTo = sanitizeRedirectTo(searchParams.get('redirectTo'))
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -30,27 +35,24 @@ export function Login() {
     setError(null)
     setIsSubmitting(true)
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
-
-    setIsSubmitting(false)
-
-    if (signInError) {
-      setError(signInError.message)
-      return
+    try {
+      await signIn(email.trim(), password)
+      navigate(redirectTo, { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao entrar')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    navigate(redirectTo, { replace: true })
   }
 
   const handleSignOut = async () => {
     try {
       await signOut()
       setError(null)
+      navigate('/jogos', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao sair')
+      return
     }
   }
 
