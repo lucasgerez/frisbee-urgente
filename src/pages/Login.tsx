@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 export function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isLoading, canManage, session, user, profile, role, signOut } = useAuth()
+  const { isLoading, session, user, profile, role, signOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,10 +18,10 @@ export function Login() {
   const redirectTo = searchParams.get('redirectTo') || '/jogos'
 
   useEffect(() => {
-    if (!isLoading && session && canManage) {
+    if (!isLoading && session) {
       navigate(redirectTo, { replace: true })
     }
-  }, [isLoading, canManage, navigate, redirectTo, session])
+  }, [isLoading, navigate, redirectTo, session])
 
   if (isLoading) return <LoadingScreen />
 
@@ -30,7 +30,7 @@ export function Login() {
     setError(null)
     setIsSubmitting(true)
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     })
@@ -39,12 +39,6 @@ export function Login() {
 
     if (signInError) {
       setError(signInError.message)
-      return
-    }
-
-    const nextRole = data.session?.user.app_metadata?.role
-    if (nextRole !== 'editor' && nextRole !== 'admin') {
-      setError('Sua conta não tem permissão de editor.')
       return
     }
 
@@ -100,9 +94,6 @@ export function Login() {
           />
         </div>
 
-        {session && !canManage && (
-          <ErrorMessage message="Sua conta esta autenticada, mas nao tem permissao de editor." />
-        )}
         {error && <ErrorMessage message={error} />}
         {session && user && (
           <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700 space-y-1">

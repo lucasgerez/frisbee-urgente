@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { queryClient } from '../lib/queryClient'
 import { canManageRole, getUserRole, isAdminRole, isEditorRole } from '../lib/auth'
 import type { Profile } from '../types/database'
 
@@ -23,8 +24,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const authRequestId = useRef(0)
 
-  const loadProfile = async (user: User) => {
+  const clearSignedOutState = (clearCache = true) => {
+    authRequestId.current += 1
+    setSession(null)
+    setProfile(null)
+    setIsLoading(false)
+    if (clearCache) {
+      queryClient.clear()
+    }
+  }
+
+  const loadProfile = async (user: User): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -32,8 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle()
 
     if (!error) {
-      setProfile((data as Profile | null) ?? null)
-      return
+      return (data as Profile | null) ?? null
     }
 
     const fallbackName = typeof user.user_metadata?.full_name === 'string'
@@ -47,11 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single()
 
     if (!insertError) {
-      setProfile(inserted as Profile)
-      return
+      return inserted as Profile
     }
 
-    setProfile(null)
+    return null
   }
 
   useEffect(() => {
@@ -62,26 +72,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setSession(data.session)
         if (data.session?.user) {
-          await loadProfile(data.session.user)
+          const requestId = authRequestId.current + 1
+          authRequestId.current = requestId
+          const loadedProfile = await loadProfile(data.session.user)
+          if (isMounted && authRequestId.current === requestId) {
+            setProfile(loadedProfile)
+          }
         } else {
-          setProfile(null)
+          clearSignedOutState(false)
         }
       } catch {
         setProfile(null)
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      if (!nextSession?.user) {
+        clearSignedOutState()
+        return
+      }
+
+      const requestId = authRequestId.current + 1
+      authRequestId.current = requestId
       try {
         setSession(nextSession)
-        if (nextSession?.user) {
-          await loadProfile(nextSession.user)
-        } else {
-          setProfile(null)
+        const loadedProfile = await loadProfile(nextSession.user)
+        if (authRequestId.current === requestId) {
+          setProfile(loadedProfile)
         }
       } catch {
         setProfile(null)
@@ -98,9 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut({ scope: 'local' })
-    setSession(null)
-    setProfile(null)
-    setIsLoading(false)
+    clearSignedOutState()
     if (error) {
       // Keep user logged out locally even if remote revocation fails.
       console.error('Logout warning:', error.message)

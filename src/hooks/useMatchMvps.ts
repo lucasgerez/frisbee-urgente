@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { MatchMvp, MatchMvpWithPlayers } from '../types/database'
+import type { MatchMvpWithPlayers } from '../types/database'
 
 const matchMvpSelect =
   '*, team:teams(*), male_player:players!match_mvps_male_player_id_fkey(*), female_player:players!match_mvps_female_player_id_fkey(*)'
@@ -57,13 +57,10 @@ export function useCreateMatchMvp() {
 
   return useMutation({
     mutationFn: async (payload: MatchMvpPayload) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('match_mvps')
         .insert(payload)
-        .select()
-        .single()
-      if (error) throw error
-      return data as MatchMvp
+      if (error) throw new Error(error.message)
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvp'] })
@@ -78,14 +75,11 @@ export function useUpdateMatchMvp() {
   return useMutation({
     mutationFn: async (payload: UpdateMatchMvpPayload) => {
       const { id, team_id, male_player_id, female_player_id } = payload
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('match_mvps')
         .update({ team_id, male_player_id, female_player_id })
         .eq('id', id)
-        .select()
-        .single()
-      if (error) throw error
-      return data as MatchMvp
+      if (error) throw new Error(error.message)
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvp'] })
