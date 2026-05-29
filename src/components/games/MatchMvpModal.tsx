@@ -20,7 +20,11 @@ interface MatchMvpModalProps {
 
 function getFriendlyError(err: unknown) {
   if (!(err instanceof Error)) return 'Erro ao salvar MVP.'
-  if (err.message.includes('duplicate key') || err.message.includes('match_mvps_game_id_key')) {
+  if (
+    err.message.includes('duplicate key') ||
+    err.message.includes('match_mvps_game_id_key') ||
+    err.message.includes('duplicate key value violates unique constraint')
+  ) {
     return 'Este jogo ja possui MVP cadastrado. Apenas admins podem corrigir a selecao.'
   }
   return err.message

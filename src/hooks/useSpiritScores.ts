@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { SpiritScore, SpiritScoreWithTeam } from '../types/database'
+import type { SpiritScoreWithTeam } from '../types/database'
 
 export interface SpiritScorePayload {
   game_id: string
@@ -59,16 +59,14 @@ export function useCreateSpiritScore() {
 
   return useMutation({
     mutationFn: async (payload: SpiritScorePayload) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('spirit_scores')
         .insert(payload)
-        .select()
-        .single()
-      if (error) throw error
-      return data as SpiritScore
+      if (error) throw new Error(error.message)
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })
+      qc.invalidateQueries({ queryKey: ['spirit-scores'] })
     },
   })
 }
@@ -86,7 +84,7 @@ export function useUpdateSpiritScore() {
         positive_attitude,
         communication,
       } = payload
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('spirit_scores')
         .update({
           rules_knowledge,
@@ -96,10 +94,7 @@ export function useUpdateSpiritScore() {
           communication,
         })
         .eq('id', id)
-        .select()
-        .single()
-      if (error) throw error
-      return data as SpiritScore
+      if (error) throw new Error(error.message)
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })

@@ -361,7 +361,9 @@ export function SpiritScoreModal({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao salvar pontuação.'
       setError(
-        message.includes('duplicate key')
+        message.includes('duplicate key') ||
+          message.includes('spirit_scores_game_id_evaluated_team_id_created_by_key') ||
+          message.includes('Pontuacao de espirito ja cadastrada')
           ? 'Esta pontuação de espírito ja foi salva. Apenas admins podem corrigir.'
           : message
       )
