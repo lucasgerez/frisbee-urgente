@@ -62,3 +62,75 @@ using (
   public.is_admin()
   or created_by = auth.uid()
 );
+
+create or replace function public.get_public_tournament_spirit_stats()
+returns table (
+  tournament_id uuid,
+  team_id uuid,
+  team_name text,
+  score_count bigint,
+  total_score bigint
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    games.tournament_id,
+    spirit_scores.evaluated_team_id as team_id,
+    teams.name as team_name,
+    count(*) as score_count,
+    coalesce(sum(spirit_scores.total_score), 0)::bigint as total_score
+  from public.spirit_scores
+  join public.games on games.id = spirit_scores.game_id
+  join public.teams on teams.id = spirit_scores.evaluated_team_id
+  where public.is_admin()
+    or public.is_tournament_finished(games.tournament_id)
+  group by games.tournament_id, spirit_scores.evaluated_team_id, teams.name
+  order by total_score desc, teams.name asc;
+$$;
+
+create or replace function public.get_public_tournament_mvp_stats()
+returns table (
+  tournament_id uuid,
+  player_id uuid,
+  player_name text,
+  gender text,
+  mvp_count bigint
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with mvp_players as (
+    select games.tournament_id, players.id, players.name, players.nickname, players.gender
+    from public.match_mvps
+    join public.games on games.id = match_mvps.game_id
+    join public.players on players.id = match_mvps.male_player_id
+    where public.is_admin()
+      or public.is_tournament_finished(games.tournament_id)
+
+    union all
+
+    select games.tournament_id, players.id, players.name, players.nickname, players.gender
+    from public.match_mvps
+    join public.games on games.id = match_mvps.game_id
+    join public.players on players.id = match_mvps.female_player_id
+    where public.is_admin()
+      or public.is_tournament_finished(games.tournament_id)
+  )
+  select
+    mvp_players.tournament_id,
+    mvp_players.id as player_id,
+    coalesce(nullif(trim(mvp_players.nickname), ''), mvp_players.name) as player_name,
+    mvp_players.gender::text as gender,
+    count(*) as mvp_count
+  from mvp_players
+  group by mvp_players.tournament_id, mvp_players.id, player_name, mvp_players.gender
+  order by mvp_count desc, player_name asc;
+$$;
+
+grant execute on function public.get_public_tournament_spirit_stats() to anon, authenticated;
+grant execute on function public.get_public_tournament_mvp_stats() to anon, authenticated;

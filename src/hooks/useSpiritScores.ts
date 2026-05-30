@@ -2,6 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { SpiritScoreWithTeam } from '../types/database'
 
+export interface TournamentSpiritStats {
+  tournamentId: string
+  teamId: string
+  teamName: string
+  scoreCount: number
+  totalScore: number
+}
+
 export interface SpiritScorePayload {
   game_id: string
   evaluated_team_id: string
@@ -67,7 +75,32 @@ export function useCreateSpiritScore() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })
       qc.invalidateQueries({ queryKey: ['spirit-scores'] })
+      qc.invalidateQueries({ queryKey: ['tournament-spirit-stats'] })
     },
+  })
+}
+
+export function useTournamentSpiritStats(enabled = true) {
+  return useQuery({
+    queryKey: ['tournament-spirit-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_public_tournament_spirit_stats')
+      if (error) throw error
+      return (data as {
+        tournament_id: string
+        team_id: string
+        team_name: string
+        score_count: number
+        total_score: number
+      }[]).map((row) => ({
+        tournamentId: row.tournament_id,
+        teamId: row.team_id,
+        teamName: row.team_name,
+        scoreCount: Number(row.score_count),
+        totalScore: Number(row.total_score),
+      })) satisfies TournamentSpiritStats[]
+    },
+    enabled,
   })
 }
 
@@ -99,6 +132,7 @@ export function useUpdateSpiritScore() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })
       qc.invalidateQueries({ queryKey: ['spirit-scores'] })
+      qc.invalidateQueries({ queryKey: ['tournament-spirit-stats'] })
     },
   })
 }

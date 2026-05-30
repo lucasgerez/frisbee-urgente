@@ -1,9 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { MatchMvpWithPlayers } from '../types/database'
+import type { Gender, MatchMvpWithPlayers } from '../types/database'
 
 const matchMvpSelect =
   '*, team:teams(*), male_player:players!match_mvps_male_player_id_fkey(*), female_player:players!match_mvps_female_player_id_fkey(*)'
+
+export interface TournamentMvpStats {
+  tournamentId: string
+  playerId: string
+  playerName: string
+  gender: Gender
+  count: number
+}
 
 export interface MatchMvpPayload {
   game_id: string
@@ -52,6 +60,30 @@ export function useAllMatchMvps(enabled = true) {
   })
 }
 
+export function useTournamentMvpStats(enabled = true) {
+  return useQuery({
+    queryKey: ['tournament-mvp-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_public_tournament_mvp_stats')
+      if (error) throw error
+      return (data as {
+        tournament_id: string
+        player_id: string
+        player_name: string
+        gender: Gender
+        mvp_count: number
+      }[]).map((row) => ({
+        tournamentId: row.tournament_id,
+        playerId: row.player_id,
+        playerName: row.player_name,
+        gender: row.gender,
+        count: Number(row.mvp_count),
+      })) satisfies TournamentMvpStats[]
+    },
+    enabled,
+  })
+}
+
 export function useCreateMatchMvp() {
   const qc = useQueryClient()
 
@@ -66,6 +98,7 @@ export function useCreateMatchMvp() {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvps'] })
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvp'] })
       qc.invalidateQueries({ queryKey: ['match-mvps'] })
+      qc.invalidateQueries({ queryKey: ['tournament-mvp-stats'] })
     },
   })
 }
@@ -86,6 +119,7 @@ export function useUpdateMatchMvp() {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvps'] })
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvp'] })
       qc.invalidateQueries({ queryKey: ['match-mvps'] })
+      qc.invalidateQueries({ queryKey: ['tournament-mvp-stats'] })
     },
   })
 }
