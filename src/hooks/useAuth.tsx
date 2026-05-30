@@ -15,6 +15,7 @@ interface AuthState {
   isAdmin: boolean
   canManage: boolean
   role: string | null
+  signUp: (fullName: string, email: string, password: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
@@ -146,6 +147,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setSignedInState(data.session)
   }
 
+  const signUp = async (fullName: string, email: string, password: string) => {
+    setIsLoading(true)
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+        emailRedirectTo: window.location.origin,
+      },
+    })
+
+    if (error) {
+      setIsLoading(false)
+      throw error
+    }
+
+    if (data.session) {
+      await setSignedInState(data.session)
+      return
+    }
+
+    setIsLoading(false)
+  }
+
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut({ scope: 'local' })
@@ -168,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminRole(session),
       canManage: canManageRole(session),
       role: getUserRole(session),
+      signUp,
       signIn,
       signOut,
     }),

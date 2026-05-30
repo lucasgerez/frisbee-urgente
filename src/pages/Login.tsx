@@ -97,6 +97,11 @@ export function Login() {
         </div>
 
         {error && <ErrorMessage message={error} />}
+        {searchParams.get('confirmed') === '1' && (
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
+            Email confirmado. Entre com sua conta para continuar.
+          </div>
+        )}
         {session && user && (
           <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700 space-y-1">
             <div><span className="font-semibold">Usuario:</span> {profile?.full_name || user.email}</div>
@@ -119,6 +124,9 @@ export function Login() {
 
       <Link to="/jogos" className="block text-center text-sm font-medium text-cobalt-700">
         Voltar para jogos
+      </Link>
+      <Link to="/signup" className="block text-center text-sm font-medium text-cobalt-700">
+        Criar conta
       </Link>
     </div>
   )
