@@ -21,17 +21,17 @@ export interface UpdateMatchMvpPayload {
   female_player_id: string
 }
 
-export function useMatchMvp(gameId?: string, enabled = true) {
+export function useGameMatchMvps(gameId?: string, enabled = true) {
   return useQuery({
-    queryKey: ['games', gameId, 'match-mvp'],
+    queryKey: ['games', gameId, 'match-mvps'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('match_mvps')
         .select(matchMvpSelect)
         .eq('game_id', gameId!)
-        .maybeSingle()
+        .order('created_at', { ascending: false })
       if (error) throw error
-      return data as MatchMvpWithPlayers | null
+      return data as MatchMvpWithPlayers[]
     },
     enabled: !!gameId && enabled,
   })
@@ -63,6 +63,7 @@ export function useCreateMatchMvp() {
       if (error) throw new Error(error.message)
     },
     onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvps'] })
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvp'] })
       qc.invalidateQueries({ queryKey: ['match-mvps'] })
     },
@@ -82,6 +83,7 @@ export function useUpdateMatchMvp() {
       if (error) throw new Error(error.message)
     },
     onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvps'] })
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'match-mvp'] })
       qc.invalidateQueries({ queryKey: ['match-mvps'] })
     },

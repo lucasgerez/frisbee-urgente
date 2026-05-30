@@ -341,7 +341,7 @@ export function SpiritScoreModal({
     try {
       if (currentScore) {
         if (!isAdmin) {
-          setError('Esta pontuação de espírito ja foi salva. Apenas admins podem corrigir.')
+          setError('Este time ja possui pontuação de espírito salva para este jogo. Apenas admins podem corrigir.')
           return
         }
         await updateSpiritScore.mutateAsync({
@@ -363,8 +363,9 @@ export function SpiritScoreModal({
       setError(
         message.includes('duplicate key') ||
           message.includes('spirit_scores_game_id_evaluated_team_id_created_by_key') ||
+          message.includes('spirit_scores_game_id_evaluated_team_id_key') ||
           message.includes('Pontuacao de espirito ja cadastrada')
-          ? 'Esta pontuação de espírito ja foi salva. Apenas admins podem corrigir.'
+          ? 'Este time ja possui pontuação de espírito salva para este jogo. Apenas admins podem corrigir.'
           : message
       )
     }
@@ -381,7 +382,7 @@ export function SpiritScoreModal({
           }`}>
             {locked
               ? 'Pontuação ja salva para este time. Apenas admins podem corrigir.'
-              : 'Pontuação ja salva. Como admin, voce pode corrigir a selecao.'}
+              : 'Pontuação ja salva para este time. Como admin, voce pode corrigir a selecao.'}
           </div>
         )}
 

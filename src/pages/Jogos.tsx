@@ -5,7 +5,7 @@ import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '../hooks/
 import { useGoals } from '../hooks/useGoals'
 import { usePlayers } from '../hooks/usePlayers'
 import { useSpiritScores } from '../hooks/useSpiritScores'
-import { useMatchMvp } from '../hooks/useMatchMvps'
+import { useGameMatchMvps } from '../hooks/useMatchMvps'
 import { useAuth } from '../hooks/useAuth'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { GameCard } from '../components/games/GameCard'
@@ -38,7 +38,7 @@ export function Jogos() {
   const deleteGameMutation = useDeleteGame()
   const { isLoading: authLoading, session, canManage, user, isEditor, isAdmin } = useAuth()
   const { data: spiritScores = [] } = useSpiritScores(spiritGame?.id, !!session && !!spiritGame)
-  const { data: matchMvp = null } = useMatchMvp(mvpGame?.id, !!mvpGame)
+  const { data: matchMvps = [] } = useGameMatchMvps(mvpGame?.id, !!mvpGame)
   const { data: mvpPlayersA = [] } = usePlayers(mvpGame?.team_a_id)
   const { data: mvpPlayersB = [] } = usePlayers(mvpGame?.team_b_id)
 
@@ -297,7 +297,7 @@ export function Jogos() {
         playersB={mvpPlayersB}
         currentUserId={user?.id ?? ''}
         isAdmin={isAdmin}
-        mvp={matchMvp}
+        mvps={matchMvps}
       />
     </div>
   )
