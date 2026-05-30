@@ -27,6 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const authRequestId = useRef(0)
+  const deferredAuthTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
+
+  const clearDeferredAuthUpdates = () => {
+    deferredAuthTimers.current.forEach((timer) => clearTimeout(timer))
+    deferredAuthTimers.current.clear()
+  }
 
   const clearSignedOutState = (clearCache = true) => {
     authRequestId.current += 1
@@ -91,9 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!isMounted) return
+    const loadInitialSession = async () => {
       try {
+        const { data, error } = await supabase.auth.getSession()
+        if (!isMounted) return
+
+        if (error) {
+          clearSignedOutState(false)
+          return
+        }
+
         setSession(data.session)
         if (data.session?.user) {
           await setSignedInState(data.session)
@@ -101,27 +114,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearSignedOutState(false)
         }
       } catch {
-        setProfile(null)
+        if (isMounted) {
+          setSession(null)
+          setProfile(null)
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false)
         }
       }
-    })
+    }
+
+    void loadInitialSession()
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!nextSession?.user) {
+        clearDeferredAuthUpdates()
         clearSignedOutState()
         return
       }
 
-      await setSignedInState(nextSession)
+      const timer = setTimeout(() => {
+        deferredAuthTimers.current.delete(timer)
+        if (isMounted) {
+          void setSignedInState(nextSession)
+        }
+      }, 0)
+      deferredAuthTimers.current.add(timer)
     })
 
     return () => {
       isMounted = false
+      clearDeferredAuthUpdates()
+      authRequestId.current += 1
       subscription.unsubscribe()
     }
   }, [])
