@@ -20,6 +20,9 @@ interface MatchMvpModalProps {
 
 function getFriendlyError(err: unknown) {
   if (!(err instanceof Error)) return 'Erro ao salvar MVP.'
+  if (err.message.includes('Editor ja cadastrou MVP para este jogo')) {
+    return 'Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.'
+  }
   if (
     err.message.includes('duplicate key') ||
     err.message.includes('match_mvps_game_id_key') ||
@@ -60,13 +63,16 @@ export function MatchMvpModal({
       : []
   const malePlayers = selectedPlayers.filter((player) => player.gender === 'Masculino')
   const femalePlayers = selectedPlayers.filter((player) => player.gender === 'Feminino')
-  const currentMvp = mvps.find((mvp) => mvp.team_id === selectedTeam?.id) ?? null
-  const locked = !!currentMvp && !isAdmin
+  const editorMvp = mvps.find((mvp) => mvp.created_by === currentUserId) ?? null
+  const selectedTeamMvp = mvps.find((mvp) => mvp.team_id === selectedTeam?.id) ?? null
+  const currentMvp = isAdmin ? selectedTeamMvp : editorMvp
+  const locked = !!editorMvp && !isAdmin
 
   useEffect(() => {
     if (!open || !game) return
     const votedTeamIds = new Set(mvps.map((mvp) => mvp.team_id))
-    const initialTeam = [game.team_a, game.team_b].find((team) => !votedTeamIds.has(team.id))
+    const initialTeam = (!isAdmin ? editorMvp?.team : null)
+      ?? [game.team_a, game.team_b].find((team) => !votedTeamIds.has(team.id))
       ?? mvps[0]?.team
       ?? game.team_a
     setSelectedTeam(initialTeam)
@@ -74,7 +80,7 @@ export function MatchMvpModal({
     setMalePlayer(initialMvp?.male_player ?? null)
     setFemalePlayer(initialMvp?.female_player ?? null)
     setError('')
-  }, [open, game, mvps])
+  }, [open, game, mvps, isAdmin, editorMvp])
 
   useEffect(() => {
     if (!open) return
@@ -101,7 +107,7 @@ export function MatchMvpModal({
     try {
       if (currentMvp) {
         if (!isAdmin) {
-          setError('Este time ja possui MVP cadastrado para este jogo. Apenas admins podem corrigir a selecao.')
+          setError('Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.')
           return
         }
         await updateMatchMvp.mutateAsync({
@@ -136,7 +142,7 @@ export function MatchMvpModal({
               : 'bg-cobalt-50 border-cobalt-100 text-cobalt-800'
           }`}>
             {locked
-              ? 'MVP ja cadastrado para este time. Apenas admins podem corrigir a selecao.'
+              ? 'Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.'
               : 'MVP ja cadastrado para este time. Como admin, voce pode corrigir a selecao.'}
           </div>
         )}
