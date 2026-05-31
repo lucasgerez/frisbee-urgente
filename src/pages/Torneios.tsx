@@ -324,6 +324,56 @@ function MvpStatsSection({
   )
 }
 
+function TableRulesSection() {
+  return (
+    <div className="rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-cobalt-700 text-white px-3 py-2 text-xs font-black tracking-wide">
+        REGRAS DA MESA
+      </div>
+      <div className="p-3 space-y-3 text-sm text-gray-700">
+        <p>
+          Essas regras estão de acordo com o Regulamento do Pindorama 2026. Em caso de dúvida,
+          é só consultar!
+        </p>
+
+        <div className="space-y-1">
+          <p>
+            O torneio seguirá as regras oficiais (versão 2026) da WFDF e a primeira proporção
+            será feita por sorteio e as seguintes a proporção de ABBA.
+          </p>
+          <p><strong>Linhas Proporção Homem:</strong> 4 homens e 3 mulheres</p>
+          <p><strong>Linhas Proporção Mulher:</strong> 4 mulheres e 3 homens</p>
+        </div>
+
+        <div className="space-y-1 text-xs text-gray-600">
+          <p>
+            *Na ocasião de jogadores não-binários nas equipes, tais atletas podem ser escalades
+            nas linhas de jogo livremente, independente da proporção de gênero.
+          </p>
+          <p>*Em casos extraordinários as equipes podem combinar de alterar esse sistema.</p>
+        </div>
+
+        <div className="space-y-1">
+          <p><strong>O jogo vai até 60 minutos ou quando um dos times fizer 13 pontos.</strong></p>
+          <div className="space-y-1 text-xs text-gray-600">
+            <p>*Em caso de término do tempo regulamentar com o “disco em jogo”, termina-se o ponto.</p>
+            <p>*Em caso de empate, joga-se o gol de ouro.</p>
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100">
+          <div className="px-3 py-2">
+            <strong>Meio-tempo:</strong> 30 min ou 7 pontos / 3 min
+          </div>
+          <div className="px-3 py-2">
+            <strong>Time out:</strong> 1 pedido por tempo por time por período / 60 seg
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Torneios() {
   const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
@@ -336,6 +386,7 @@ export function Torneios() {
   const [expandedStatsTournamentId, setExpandedStatsTournamentId] = useState<string | null>(null)
   const [expandedSpiritStatsTournamentId, setExpandedSpiritStatsTournamentId] = useState<string | null>(null)
   const [expandedMvpStatsTournamentId, setExpandedMvpStatsTournamentId] = useState<string | null>(null)
+  const [expandedRulesTournamentId, setExpandedRulesTournamentId] = useState<string | null>(null)
   const [statsSortKey, setStatsSortKey] = useState<StatsSortKey>('goals')
   const [statsSortDirection, setStatsSortDirection] = useState<SortDirection>('desc')
   const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -549,6 +600,7 @@ export function Torneios() {
             const statsExpanded = expandedStatsTournamentId === tournament.id
             const spiritStatsExpanded = expandedSpiritStatsTournamentId === tournament.id
             const mvpStatsExpanded = expandedMvpStatsTournamentId === tournament.id
+            const rulesExpanded = expandedRulesTournamentId === tournament.id
             const canViewStats = isAdmin || isPastDate(tournament.end_date)
             const statsLoading = gamesLoading || goalsLoading || defensesLoading
             const statsError = gamesError || goalsError || defensesError
@@ -618,6 +670,18 @@ export function Torneios() {
                 >
                   {isExpanded ? 'Ocultar jogos' : `Ver jogos (${tournamentGames.length})`}
                 </Button>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setExpandedRulesTournamentId(rulesExpanded ? null : tournament.id)}
+                  className="w-full"
+                >
+                  {rulesExpanded ? 'Ocultar regras da mesa' : 'Regras da mesa'}
+                </Button>
+
+                {rulesExpanded && <TableRulesSection />}
 
                 {canViewStats && (
                   <Button
