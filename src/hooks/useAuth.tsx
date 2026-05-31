@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { queryClient } from '../lib/queryClient'
 import { canManageRole, getUserRole, isAdminRole, isEditorRole } from '../lib/auth'
 import type { Profile } from '../types/database'
 
@@ -14,6 +15,8 @@ interface AuthState {
   isAdmin: boolean
   canManage: boolean
   role: string | null
+  signUp: (fullName: string, email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -23,8 +26,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const authRequestId = useRef(0)
+  const deferredAuthTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
 
-  const loadProfile = async (user: User) => {
+  const clearDeferredAuthUpdates = () => {
+    deferredAuthTimers.current.forEach((timer) => clearTimeout(timer))
+    deferredAuthTimers.current.clear()
+  }
+
+  const clearSignedOutState = (clearCache = true) => {
+    authRequestId.current += 1
+    setSession(null)
+    setProfile(null)
+    setIsLoading(false)
+    if (clearCache) {
+      queryClient.clear()
+    }
+  }
+
+  const loadProfile = async (user: User): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -32,8 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle()
 
     if (!error) {
-      setProfile((data as Profile | null) ?? null)
-      return
+      return (data as Profile | null) ?? null
     }
 
     const fallbackName = typeof user.user_metadata?.full_name === 'string'
@@ -47,63 +66,150 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single()
 
     if (!insertError) {
-      setProfile(inserted as Profile)
-      return
+      return inserted as Profile
     }
 
-    setProfile(null)
+    return null
+  }
+
+  const setSignedInState = async (nextSession: Session) => {
+    const requestId = authRequestId.current + 1
+    authRequestId.current = requestId
+    setIsLoading(true)
+    setSession(nextSession)
+
+    try {
+      const loadedProfile = await loadProfile(nextSession.user)
+      if (authRequestId.current === requestId) {
+        setProfile(loadedProfile)
+      }
+    } catch {
+      if (authRequestId.current === requestId) {
+        setProfile(null)
+      }
+    } finally {
+      if (authRequestId.current === requestId) {
+        setIsLoading(false)
+      }
+    }
   }
 
   useEffect(() => {
     let isMounted = true
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!isMounted) return
+    const loadInitialSession = async () => {
       try {
+        const { data, error } = await supabase.auth.getSession()
+        if (!isMounted) return
+
+        if (error) {
+          clearSignedOutState(false)
+          return
+        }
+
         setSession(data.session)
         if (data.session?.user) {
-          await loadProfile(data.session.user)
+          await setSignedInState(data.session)
         } else {
-          setProfile(null)
+          clearSignedOutState(false)
         }
       } catch {
-        setProfile(null)
+        if (isMounted) {
+          setSession(null)
+          setProfile(null)
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
-    })
+    }
+
+    void loadInitialSession()
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      try {
-        setSession(nextSession)
-        if (nextSession?.user) {
-          await loadProfile(nextSession.user)
-        } else {
-          setProfile(null)
-        }
-      } catch {
-        setProfile(null)
-      } finally {
-        setIsLoading(false)
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!nextSession?.user) {
+        clearDeferredAuthUpdates()
+        clearSignedOutState()
+        return
       }
+
+      const timer = setTimeout(() => {
+        deferredAuthTimers.current.delete(timer)
+        if (isMounted) {
+          void setSignedInState(nextSession)
+        }
+      }, 0)
+      deferredAuthTimers.current.add(timer)
     })
 
     return () => {
       isMounted = false
+      clearDeferredAuthUpdates()
+      authRequestId.current += 1
       subscription.unsubscribe()
     }
   }, [])
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
-    setSession(null)
-    setProfile(null)
-    setIsLoading(false)
+  const signIn = async (email: string, password: string) => {
+    setIsLoading(true)
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
     if (error) {
-      // Keep user logged out locally even if remote revocation fails.
-      console.error('Logout warning:', error.message)
+      setIsLoading(false)
+      throw error
+    }
+
+    if (!data.session) {
+      setIsLoading(false)
+      throw new Error('Sessao de login nao foi criada.')
+    }
+
+    await setSignedInState(data.session)
+  }
+
+  const signUp = async (fullName: string, email: string, password: string) => {
+    setIsLoading(true)
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+        emailRedirectTo: window.location.origin,
+      },
+    })
+
+    if (error) {
+      setIsLoading(false)
+      throw error
+    }
+
+    if (data.session) {
+      await setSignedInState(data.session)
+      return
+    }
+
+    setIsLoading(false)
+  }
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      if (error) {
+        // Keep user logged out locally even if remote revocation fails.
+        console.error('Logout warning:', error.message)
+      }
+    } finally {
+      clearSignedOutState()
     }
   }
 
@@ -117,6 +223,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminRole(session),
       canManage: canManageRole(session),
       role: getUserRole(session),
+      signUp,
+      signIn,
       signOut,
     }),
     [session, profile, isLoading]

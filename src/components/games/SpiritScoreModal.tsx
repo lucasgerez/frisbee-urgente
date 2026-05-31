@@ -293,18 +293,17 @@ export function SpiritScoreModal({
     return [game.team_a, game.team_b]
   }, [game])
 
-  const currentScore = scores.find((score) => {
-    if (score.evaluated_team_id !== evaluatedTeam?.id) return false
-    return isAdmin || score.created_by === currentUserId
-  })
-  const locked = !!currentScore && !isAdmin
+  const editorScore = scores.find((score) => score.created_by === currentUserId) ?? null
+  const selectedTeamScore = scores.find((score) => score.evaluated_team_id === evaluatedTeam?.id) ?? null
+  const currentScore = isAdmin ? selectedTeamScore : editorScore
+  const locked = !!editorScore && !isAdmin
 
   useEffect(() => {
     if (!open || !game) return
-    setEvaluatedTeam(game.team_b)
+    setEvaluatedTeam((!isAdmin ? editorScore?.evaluated_team : null) ?? game.team_b)
     setCategoryScores(defaultScores)
     setError('')
-  }, [open, game])
+  }, [open, game, isAdmin, editorScore])
 
   const handleTeamChange = (team: Team | null) => {
     setEvaluatedTeam(team)
@@ -341,7 +340,7 @@ export function SpiritScoreModal({
     try {
       if (currentScore) {
         if (!isAdmin) {
-          setError('Esta pontuação de espírito ja foi salva. Apenas admins podem corrigir.')
+          setError('Voce ja cadastrou pontuação de espírito para este jogo. Cada editor pode votar apenas uma vez.')
           return
         }
         await updateSpiritScore.mutateAsync({
@@ -360,9 +359,16 @@ export function SpiritScoreModal({
       onClose()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao salvar pontuação.'
+      if (message.includes('Editor ja cadastrou pontuacao de espirito para este jogo')) {
+        setError('Voce ja cadastrou pontuação de espírito para este jogo. Cada editor pode votar apenas uma vez.')
+        return
+      }
       setError(
-        message.includes('duplicate key')
-          ? 'Esta pontuação de espírito ja foi salva. Apenas admins podem corrigir.'
+        message.includes('duplicate key') ||
+          message.includes('spirit_scores_game_id_evaluated_team_id_created_by_key') ||
+          message.includes('spirit_scores_game_id_evaluated_team_id_key') ||
+          message.includes('Pontuacao de espirito ja cadastrada')
+          ? 'Este time ja possui pontuação de espírito salva para este jogo. Apenas admins podem corrigir.'
           : message
       )
     }
@@ -378,8 +384,8 @@ export function SpiritScoreModal({
               : 'bg-cobalt-50 border-cobalt-100 text-cobalt-800'
           }`}>
             {locked
-              ? 'Pontuação ja salva para este time. Apenas admins podem corrigir.'
-              : 'Pontuação ja salva. Como admin, voce pode corrigir a selecao.'}
+              ? 'Voce ja cadastrou pontuação de espírito para este jogo. Cada editor pode votar apenas uma vez.'
+              : 'Pontuação ja salva para este time. Como admin, voce pode corrigir a selecao.'}
           </div>
         )}
 

@@ -139,6 +139,9 @@ export function JogoAnotar() {
         {/* Game Controls */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
           <h2 className="font-bold text-gray-800">Controle do jogo</h2>
+          {updateStatus.error && (
+            <ErrorMessage message={updateStatus.error.message || 'Nao foi possivel atualizar o status do jogo.'} />
+          )}
           <div className="flex gap-2 flex-wrap">
             {game.status === 'pending' && (
               <Button onClick={handleStart} loading={updateStatus.isPending} size="lg" className="flex-1">

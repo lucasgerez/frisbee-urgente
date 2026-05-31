@@ -4,24 +4,29 @@ import { Button } from '../components/ui/Button'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { useAuth } from '../hooks/useAuth'
-import { supabase } from '../lib/supabase'
+
+function sanitizeRedirectTo(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/jogos'
+  if (value === '/login' || value.startsWith('/login?')) return '/jogos'
+  return value
+}
 
 export function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isLoading, canManage, session, user, profile, role, signOut } = useAuth()
+  const { isLoading, session, user, profile, role, signIn, signOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const redirectTo = searchParams.get('redirectTo') || '/jogos'
+  const redirectTo = sanitizeRedirectTo(searchParams.get('redirectTo'))
 
   useEffect(() => {
-    if (!isLoading && session && canManage) {
+    if (!isLoading && session) {
       navigate(redirectTo, { replace: true })
     }
-  }, [isLoading, canManage, navigate, redirectTo, session])
+  }, [isLoading, navigate, redirectTo, session])
 
   if (isLoading) return <LoadingScreen />
 
@@ -30,33 +35,24 @@ export function Login() {
     setError(null)
     setIsSubmitting(true)
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
-
-    setIsSubmitting(false)
-
-    if (signInError) {
-      setError(signInError.message)
-      return
+    try {
+      await signIn(email.trim(), password)
+      navigate(redirectTo, { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao entrar')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const nextRole = data.session?.user.app_metadata?.role
-    if (nextRole !== 'editor' && nextRole !== 'admin') {
-      setError('Sua conta não tem permissão de editor.')
-      return
-    }
-
-    navigate(redirectTo, { replace: true })
   }
 
   const handleSignOut = async () => {
     try {
       await signOut()
       setError(null)
+      navigate('/jogos', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao sair')
+      return
     }
   }
 
@@ -100,10 +96,12 @@ export function Login() {
           />
         </div>
 
-        {session && !canManage && (
-          <ErrorMessage message="Sua conta esta autenticada, mas nao tem permissao de editor." />
-        )}
         {error && <ErrorMessage message={error} />}
+        {searchParams.get('confirmed') === '1' && (
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
+            Email confirmado. Entre com sua conta para continuar.
+          </div>
+        )}
         {session && user && (
           <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700 space-y-1">
             <div><span className="font-semibold">Usuario:</span> {profile?.full_name || user.email}</div>
@@ -126,6 +124,9 @@ export function Login() {
 
       <Link to="/jogos" className="block text-center text-sm font-medium text-cobalt-700">
         Voltar para jogos
+      </Link>
+      <Link to="/signup" className="block text-center text-sm font-medium text-cobalt-700">
+        Criar conta
       </Link>
     </div>
   )

@@ -15,13 +15,21 @@ interface MatchMvpModalProps {
   playersB: Player[]
   currentUserId: string
   isAdmin: boolean
-  mvp: MatchMvpWithPlayers | null
+  mvps: MatchMvpWithPlayers[]
 }
 
 function getFriendlyError(err: unknown) {
   if (!(err instanceof Error)) return 'Erro ao salvar MVP.'
-  if (err.message.includes('duplicate key') || err.message.includes('match_mvps_game_id_key')) {
-    return 'Este jogo ja possui MVP cadastrado. Apenas admins podem corrigir a selecao.'
+  if (err.message.includes('Editor ja cadastrou MVP para este jogo')) {
+    return 'Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.'
+  }
+  if (
+    err.message.includes('duplicate key') ||
+    err.message.includes('match_mvps_game_id_key') ||
+    err.message.includes('match_mvps_game_id_team_id_key') ||
+    err.message.includes('duplicate key value violates unique constraint')
+  ) {
+    return 'Este time ja possui MVP cadastrado para este jogo. Apenas admins podem corrigir a selecao.'
   }
   return err.message
 }
@@ -34,7 +42,7 @@ export function MatchMvpModal({
   playersB,
   currentUserId,
   isAdmin,
-  mvp,
+  mvps,
 }: MatchMvpModalProps) {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
   const [malePlayer, setMalePlayer] = useState<Player | null>(null)
@@ -55,16 +63,30 @@ export function MatchMvpModal({
       : []
   const malePlayers = selectedPlayers.filter((player) => player.gender === 'Masculino')
   const femalePlayers = selectedPlayers.filter((player) => player.gender === 'Feminino')
-  const locked = !!mvp && !isAdmin
+  const editorMvp = mvps.find((mvp) => mvp.created_by === currentUserId) ?? null
+  const selectedTeamMvp = mvps.find((mvp) => mvp.team_id === selectedTeam?.id) ?? null
+  const currentMvp = isAdmin ? selectedTeamMvp : editorMvp
+  const locked = !!editorMvp && !isAdmin
 
   useEffect(() => {
     if (!open || !game) return
-    const initialTeam = mvp?.team ?? game.team_a
+    const votedTeamIds = new Set(mvps.map((mvp) => mvp.team_id))
+    const initialTeam = (!isAdmin ? editorMvp?.team : null)
+      ?? [game.team_a, game.team_b].find((team) => !votedTeamIds.has(team.id))
+      ?? mvps[0]?.team
+      ?? game.team_a
     setSelectedTeam(initialTeam)
-    setMalePlayer(mvp?.male_player ?? null)
-    setFemalePlayer(mvp?.female_player ?? null)
+    const initialMvp = mvps.find((mvp) => mvp.team_id === initialTeam.id) ?? null
+    setMalePlayer(initialMvp?.male_player ?? null)
+    setFemalePlayer(initialMvp?.female_player ?? null)
     setError('')
-  }, [open, game, mvp])
+  }, [open, game, mvps, isAdmin, editorMvp])
+
+  useEffect(() => {
+    if (!open) return
+    setMalePlayer(currentMvp?.male_player ?? null)
+    setFemalePlayer(currentMvp?.female_player ?? null)
+  }, [open, currentMvp])
 
   if (!game) return null
 
@@ -83,13 +105,13 @@ export function MatchMvpModal({
 
     setError('')
     try {
-      if (mvp) {
+      if (currentMvp) {
         if (!isAdmin) {
-          setError('Este jogo ja possui MVP cadastrado. Apenas admins podem corrigir a selecao.')
+          setError('Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.')
           return
         }
         await updateMatchMvp.mutateAsync({
-          id: mvp.id,
+          id: currentMvp.id,
           game_id: game.id,
           team_id: selectedTeam.id,
           male_player_id: malePlayer.id,
@@ -113,15 +135,15 @@ export function MatchMvpModal({
   return (
     <Modal open={open} onClose={onClose} title="MVP da partida">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {mvp && (
+        {currentMvp && (
           <div className={`rounded-xl border p-3 text-sm ${
             locked
               ? 'bg-amber-50 border-amber-100 text-amber-800'
               : 'bg-cobalt-50 border-cobalt-100 text-cobalt-800'
           }`}>
             {locked
-              ? 'MVP ja cadastrado para este jogo. Apenas admins podem corrigir a selecao.'
-              : 'MVP ja cadastrado. Como admin, voce pode corrigir a selecao.'}
+              ? 'Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.'
+              : 'MVP ja cadastrado para este time. Como admin, voce pode corrigir a selecao.'}
           </div>
         )}
 
@@ -170,15 +192,15 @@ export function MatchMvpModal({
           />
         </div>
 
-        {mvp && (
+        {currentMvp && (
           <div className="rounded-xl border border-gray-100 p-3 text-sm">
             <div className="font-bold text-gray-900 mb-1">Selecao atual</div>
-            <div className="text-gray-600">{mvp.team.name}</div>
+            <div className="text-gray-600">{currentMvp.team.name}</div>
             <div className="text-gray-600">
-              Masculino: {getPlayerDisplayName(mvp.male_player)}
+              Masculino: {getPlayerDisplayName(currentMvp.male_player)}
             </div>
             <div className="text-gray-600">
-              Feminino: {getPlayerDisplayName(mvp.female_player)}
+              Feminino: {getPlayerDisplayName(currentMvp.female_player)}
             </div>
           </div>
         )}
@@ -196,7 +218,7 @@ export function MatchMvpModal({
               disabled={!selectedTeam || !malePlayer || !femalePlayer}
               className="flex-1"
             >
-              {mvp ? 'Salvar correcao' : 'Salvar MVP'}
+              {currentMvp ? 'Salvar correcao' : 'Salvar MVP'}
             </Button>
           )}
         </div>

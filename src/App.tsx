@@ -8,6 +8,8 @@ import { Jogos } from './pages/Jogos'
 import { JogoView } from './pages/JogoView'
 import { JogoAnotar } from './pages/JogoAnotar'
 import { Login } from './pages/Login'
+import { Signup } from './pages/Signup'
+import { AuthConfirm } from './pages/AuthConfirm'
 
 const router = createBrowserRouter([
   {
@@ -22,6 +24,8 @@ const router = createBrowserRouter([
       { path: 'jogos/:id', element: <JogoView /> },
       { path: 'jogos/:id/anotar', element: <JogoAnotar /> },
       { path: 'login', element: <Login /> },
+      { path: 'signup', element: <Signup /> },
+      { path: 'auth/confirm', element: <AuthConfirm /> },
     ],
   },
 ])

@@ -5,7 +5,7 @@ import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '../hooks/
 import { useGoals } from '../hooks/useGoals'
 import { usePlayers } from '../hooks/usePlayers'
 import { useSpiritScores } from '../hooks/useSpiritScores'
-import { useMatchMvp } from '../hooks/useMatchMvps'
+import { useGameMatchMvps } from '../hooks/useMatchMvps'
 import { useAuth } from '../hooks/useAuth'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { GameCard } from '../components/games/GameCard'
@@ -38,13 +38,13 @@ export function Jogos() {
   const deleteGameMutation = useDeleteGame()
   const { isLoading: authLoading, session, canManage, user, isEditor, isAdmin } = useAuth()
   const { data: spiritScores = [] } = useSpiritScores(spiritGame?.id, !!session && !!spiritGame)
-  const { data: matchMvp = null } = useMatchMvp(mvpGame?.id, !!mvpGame)
+  const { data: matchMvps = [] } = useGameMatchMvps(mvpGame?.id, !!mvpGame)
   const { data: mvpPlayersA = [] } = usePlayers(mvpGame?.team_a_id)
   const { data: mvpPlayersB = [] } = usePlayers(mvpGame?.team_b_id)
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
-  const canEditActions = isEditor || isAdmin
+  const canCreateActions = isEditor || isAdmin
 
   const handleTournamentChange = (t: Tournament | null) => {
     setSelectedTournament(t)
@@ -60,7 +60,7 @@ export function Jogos() {
     setShowForm(false)
   }
 
-  const requireEditor = () => {
+  const requireCreatePermission = () => {
     setPermissionError(null)
 
     if (authLoading) return false
@@ -71,7 +71,7 @@ export function Jogos() {
     }
 
     if (!canManage) {
-      setPermissionError('Sua conta nao tem permissao para criar ou editar jogos.')
+      setPermissionError('Sua conta nao tem permissao para criar jogos.')
       return false
     }
 
@@ -89,7 +89,7 @@ export function Jogos() {
     }
 
     if (!isAdmin) {
-      setPermissionError('Sua conta nao tem permissao para excluir jogos.')
+      setPermissionError('Sua conta nao tem permissao para editar ou excluir jogos.')
       return false
     }
 
@@ -97,13 +97,13 @@ export function Jogos() {
   }
 
   const handleCreateClick = () => {
-    if (!requireEditor()) return
+    if (!requireCreatePermission()) return
     resetForm()
     setShowForm(true)
   }
 
   const handleEdit = (game: GameWithTeams) => {
-    if (!requireEditor()) return
+    if (!requireAdmin()) return
     setEditingGame(game)
     setSelectedTournament(game.tournament)
     setTeamA(game.team_a)
@@ -112,19 +112,23 @@ export function Jogos() {
   }
 
   const handleSpiritScore = (game: GameWithTeams) => {
-    if (!requireEditor()) return
+    if (!requireCreatePermission()) return
     setSpiritGame(game)
   }
 
   const handleMatchMvp = (game: GameWithTeams) => {
-    if (!requireEditor()) return
+    if (!requireCreatePermission()) return
     setMvpGame(game)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedTournament || !teamA || !teamB) return
-    if (!requireEditor()) return
+    if (editingGame) {
+      if (!requireAdmin()) return
+    } else if (!requireCreatePermission()) {
+      return
+    }
     try {
       const payload = {
         tournament_id: selectedTournament.id,
@@ -250,9 +254,9 @@ export function Jogos() {
                   (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_b_id
                 ).length,
               }}
-              onSpiritScore={canEditActions ? handleSpiritScore : undefined}
-              onMatchMvp={canEditActions ? handleMatchMvp : undefined}
-              onEdit={canEditActions ? handleEdit : undefined}
+              onSpiritScore={canCreateActions ? handleSpiritScore : undefined}
+              onMatchMvp={canCreateActions ? handleMatchMvp : undefined}
+              onEdit={isAdmin ? handleEdit : undefined}
               onDelete={isAdmin ? (game) => {
                 if (!requireAdmin()) return
                 setDeleteGame(game)
@@ -293,7 +297,7 @@ export function Jogos() {
         playersB={mvpPlayersB}
         currentUserId={user?.id ?? ''}
         isAdmin={isAdmin}
-        mvp={matchMvp}
+        mvps={matchMvps}
       />
     </div>
   )

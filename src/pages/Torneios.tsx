@@ -5,8 +5,8 @@ import { useTeams } from '../hooks/useTeams'
 import { useGames } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
 import { useDefenses } from '../hooks/useDefenses'
-import { useAllSpiritScores } from '../hooks/useSpiritScores'
-import { useAllMatchMvps } from '../hooks/useMatchMvps'
+import { useTournamentSpiritStats } from '../hooks/useSpiritScores'
+import { useTournamentMvpStats } from '../hooks/useMatchMvps'
 import {
   useTournaments,
   useTournamentTeams,
@@ -23,7 +23,7 @@ import { GameStatusBadge } from '../components/ui/Badge'
 import { formatDate, formatDateOnly, formatDateTime, isPastDate, scoreColorClass } from '../lib/utils'
 import { getPlayerDisplayName } from '../lib/players'
 import { useAuth } from '../hooks/useAuth'
-import type { DefenseWithPlayer, GameWithTeams, Gender, GoalWithPlayers, MatchMvpWithPlayers, SpiritScoreWithTeam, Team, Tournament } from '../types/database'
+import type { DefenseWithPlayer, Gender, GoalWithPlayers, Team, Tournament } from '../types/database'
 
 interface PlayerTournamentStats {
   playerId: string
@@ -38,6 +38,7 @@ type StatsSortKey = 'name' | 'goals' | 'assists' | 'defenses'
 type SortDirection = 'asc' | 'desc'
 
 interface SpiritTournamentTeamStats {
+  tournamentId: string
   teamId: string
   teamName: string
   scoreCount: number
@@ -45,6 +46,7 @@ interface SpiritTournamentTeamStats {
 }
 
 interface MvpTournamentPlayerStats {
+  tournamentId: string
   playerId: string
   playerName: string
   gender: Gender
@@ -229,28 +231,12 @@ function PlayerStatsSection({
 }
 
 function computeSpiritTournamentStats(
-  tournamentGames: GameWithTeams[],
-  spiritScores: SpiritScoreWithTeam[]
+  tournamentId: string,
+  spiritStats: SpiritTournamentTeamStats[]
 ): SpiritTournamentTeamStats[] {
-  const gameIds = new Set(tournamentGames.map((game) => game.id))
-  const stats = new Map<string, SpiritTournamentTeamStats>()
-
-  spiritScores
-    .filter((score) => gameIds.has(score.game_id))
-    .forEach((score) => {
-      const current = stats.get(score.evaluated_team_id) ?? {
-        teamId: score.evaluated_team_id,
-        teamName: score.evaluated_team.name,
-        scoreCount: 0,
-        totalScore: 0,
-      }
-
-      current.scoreCount += 1
-      current.totalScore += score.total_score
-      stats.set(score.evaluated_team_id, current)
-    })
-
-  return Array.from(stats.values()).sort((a, b) => b.totalScore - a.totalScore)
+  return spiritStats
+    .filter((stats) => stats.tournamentId === tournamentId)
+    .sort((a, b) => b.totalScore - a.totalScore)
 }
 
 function SpiritStatsSection({
@@ -287,31 +273,10 @@ function SpiritStatsSection({
 }
 
 function computeMvpTournamentStats(
-  tournamentGames: GameWithTeams[],
-  matchMvps: MatchMvpWithPlayers[]
+  tournamentId: string,
+  mvpStats: MvpTournamentPlayerStats[]
 ): MvpTournamentPlayerStats[] {
-  const gameIds = new Set(tournamentGames.map((game) => game.id))
-  const stats = new Map<string, MvpTournamentPlayerStats>()
-
-  const addMvp = (playerId: string, playerName: string, gender: Gender) => {
-    const current = stats.get(playerId) ?? {
-      playerId,
-      playerName,
-      gender,
-      count: 0,
-    }
-    current.count += 1
-    stats.set(playerId, current)
-  }
-
-  matchMvps
-    .filter((mvp) => gameIds.has(mvp.game_id))
-    .forEach((mvp) => {
-      addMvp(mvp.male_player_id, getPlayerDisplayName(mvp.male_player), mvp.male_player.gender)
-      addMvp(mvp.female_player_id, getPlayerDisplayName(mvp.female_player), mvp.female_player.gender)
-    })
-
-  return Array.from(stats.values()).sort((a, b) => {
+  return mvpStats.filter((stats) => stats.tournamentId === tournamentId).sort((a, b) => {
     const countDiff = b.count - a.count
     if (countDiff !== 0) return countDiff
     return a.playerName.localeCompare(b.playerName)
@@ -389,12 +354,12 @@ export function Torneios() {
     data: spiritScores = [],
     isLoading: spiritScoresLoading,
     error: spiritScoresError,
-  } = useAllSpiritScores()
+  } = useTournamentSpiritStats()
   const {
     data: matchMvps = [],
     isLoading: matchMvpsLoading,
     error: matchMvpsError,
-  } = useAllMatchMvps()
+  } = useTournamentMvpStats()
   const canEditActions = isEditor || isAdmin
 
   const requireEditor = () => {
@@ -587,8 +552,8 @@ export function Torneios() {
             const canViewStats = isAdmin || isPastDate(tournament.end_date)
             const statsLoading = gamesLoading || goalsLoading || defensesLoading
             const statsError = gamesError || goalsError || defensesError
-            const spiritStats = computeSpiritTournamentStats(tournamentGames, spiritScores)
-            const mvpStats = computeMvpTournamentStats(tournamentGames, matchMvps)
+            const spiritStats = computeSpiritTournamentStats(tournament.id, spiritScores)
+            const mvpStats = computeMvpTournamentStats(tournament.id, matchMvps)
 
             return (
               <div
