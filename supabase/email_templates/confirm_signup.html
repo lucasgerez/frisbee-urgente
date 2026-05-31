@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bem-vindo ao Frisbee Urgente!</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;700;800;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background-color: #EFF6FF;
+      font-family: 'Inter', Arial, sans-serif;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(29, 78, 216, 0.12);
+    }
+    .header {
+      background: #ffffff;
+      padding: 40px 30px 30px;
+      text-align: center;
+      position: relative;
+      border-bottom: 2px solid #DBEAFE;
+    }
+    .brand-title {
+      font-family: 'Bangers', cursive;
+      font-size: 38px;
+      letter-spacing: 2px;
+      color: #1D4ED8;
+      text-shadow: 2px 3px 0px rgba(29, 78, 216, 0.08);
+      line-height: 1;
+    }
+    .brand-sub {
+      font-family: 'Bangers', cursive;
+      font-size: 22px;
+      color: #D97706;
+      letter-spacing: 4px;
+      margin-top: 4px;
+      text-shadow: 1px 2px 0px rgba(217, 119, 6, 0.15);
+    }
+    .body {
+      padding: 50px 40px 30px;
+      text-align: center;
+    }
+    .welcome-badge {
+      display: inline-block;
+      background: #FDE68A;
+      color: #1E40AF;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 6px 18px;
+      border-radius: 50px;
+      margin-bottom: 22px;
+    }
+    .main-title {
+      font-size: 28px;
+      font-weight: 900;
+      color: #111827;
+      margin-bottom: 14px;
+      line-height: 1.3;
+    }
+    .main-title span {
+      color: #1D4ED8;
+    }
+    .divider {
+      width: 50px;
+      height: 4px;
+      background: linear-gradient(90deg, #1D4ED8, #FBBF24);
+      border-radius: 4px;
+      margin: 0 auto 22px;
+    }
+    .message {
+      font-size: 16px;
+      color: #4B5563;
+      line-height: 1.7;
+      margin-bottom: 28px;
+    }
+    .cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #1D4ED8, #2563EB);
+      color: #ffffff !important;
+      font-family: 'Bangers', cursive;
+      font-size: 22px;
+      letter-spacing: 2px;
+      padding: 16px 48px;
+      border-radius: 50px;
+      text-decoration: none;
+      box-shadow: 0 6px 20px rgba(29, 78, 216, 0.35);
+      border: 2px solid #FBBF24;
+    }
+    .urgente-tag {
+      display: inline-block;
+      background: #F59E0B;
+      color: #ffffff;
+      font-family: 'Bangers', cursive;
+      font-size: 16px;
+      letter-spacing: 2px;
+      padding: 4px 14px;
+      border-radius: 6px;
+      margin-top: 18px;
+      box-shadow: 0 3px 8px rgba(245, 158, 11, 0.35);
+    }
+    .footer {
+      background: #1E40AF;
+      padding: 28px 40px;
+      text-align: center;
+    }
+    .footer p {
+      color: #BFDBFE;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .footer a {
+      color: #FBBF24;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .footer .copy {
+      color: #93B4F0;
+      font-size: 11px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <!-- HEADER -->
+    <div class="header">
+      <div class="brand-title">FRISBEE</div>
+      <div class="brand-sub">URGENTE !!!!</div>
+    </div>
+
+    <!-- BODY -->
+    <div class="body">
+      <div class="welcome-badge">🎉 Conta Criada com Sucesso</div>
+
+      <h1 class="main-title">
+        Olá! Seu usuário foi criado<br>
+        no APP do <span>Frisbee Urgente</span>!
+      </h1>
+
+      <div class="divider"></div>
+
+      <p class="message">
+        Falta só um passo: confirme seu email clicando no botão abaixo para liberar seu acesso.
+      </p>
+
+      <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup" class="cta-btn">CONFIRME O EMAIL</a>
+      <br>
+      <span class="urgente-tag">URGENTE !!!!</span>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <p>
+        Se você não criou esta conta, pode ignorar este email.<br>
+        Dúvidas? Fale com a gente em <a href="mailto:contato@frisbeeurgente.com.br">contato@frisbeeurgente.com.br</a>
+      </p>
+      <p class="copy">© Frisbee Urgente</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -6,6 +6,7 @@ import { useGameDefenses, useCreateDefense, useDeleteDefense } from '../hooks/us
 import { usePlayers } from '../hooks/usePlayers'
 import { useUpdateGameStatus } from '../hooks/useGames'
 import { useGameTimer } from '../hooks/useGameTimer'
+import { useGameRealtime } from '../hooks/useGameRealtime'
 import { useAuth } from '../hooks/useAuth'
 import { GoalModal } from '../components/games/GoalModal'
 import { DefenseModal } from '../components/games/DefenseModal'
@@ -34,6 +35,7 @@ export function JogoAnotar() {
   const { data: defenses = [] } = useGameDefenses(id)
   const { data: playersA = [] } = usePlayers(game?.team_a_id)
   const { data: playersB = [] } = usePlayers(game?.team_b_id)
+  useGameRealtime(id)
 
   const createGoal = useCreateGoal()
   const createDefense = useCreateDefense()
