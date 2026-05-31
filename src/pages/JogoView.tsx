@@ -3,6 +3,7 @@ import { useGame } from '../hooks/useGames'
 import { useGameGoals } from '../hooks/useGoals'
 import { useGameDefenses } from '../hooks/useDefenses'
 import { useGameTimer } from '../hooks/useGameTimer'
+import { useGameRealtime } from '../hooks/useGameRealtime'
 import { Scoreboard } from '../components/stats/Scoreboard'
 import { StatsTable } from '../components/stats/StatsTable'
 import { Button } from '../components/ui/Button'
@@ -19,6 +20,7 @@ export function JogoView() {
   const { data: goals = [], isLoading: goalsLoading } = useGameGoals(id)
   const { data: defenses = [], isLoading: defensesLoading } = useGameDefenses(id)
   const { display: timerDisplay } = useGameTimer(game)
+  useGameRealtime(id)
 
   const isLoading = gameLoading || goalsLoading || defensesLoading
 
