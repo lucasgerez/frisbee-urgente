@@ -79,9 +79,17 @@ export function useUpdateGameStatus() {
       if (error) throw error
       return data as Game
     },
-    onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ['games', vars.id] })
-      qc.invalidateQueries({ queryKey: ['games'] })
+    onSuccess: async (data, vars) => {
+      qc.setQueryData<GameWithTeams | undefined>(['games', vars.id], (current) =>
+        current ? { ...current, ...data } : current,
+      )
+      qc.setQueryData<GameWithTeams[] | undefined>(['games'], (current) =>
+        current?.map((game) => (game.id === data.id ? { ...game, ...data } : game)),
+      )
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['games', vars.id], exact: true }),
+        qc.invalidateQueries({ queryKey: ['games'], exact: true }),
+      ])
     },
   })
 }
