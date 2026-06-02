@@ -24,6 +24,10 @@ export function JogoAnotar() {
   const navigate = useNavigate()
   const [goalOpen, setGoalOpen] = useState(false)
   const [defenseOpen, setDefenseOpen] = useState(false)
+  const [pendingStatusAction, setPendingStatusAction] = useState<{
+    type: 'start' | 'pause' | 'resume' | 'end' | 'reopen'
+    fromStatus: 'pending' | 'in_progress' | 'paused' | 'finished'
+  } | null>(null)
   const [eventToDelete, setEventToDelete] = useState<
     | { type: 'goal'; id: string; label: string }
     | { type: 'defense'; id: string; label: string }
@@ -67,37 +71,63 @@ export function JogoAnotar() {
 
   const scoreA = goals.filter((g) => g.scoring_team_id === game.team_a_id).length
   const scoreB = goals.filter((g) => g.scoring_team_id === game.team_b_id).length
+  const controlStatus = pendingStatusAction?.fromStatus ?? game.status
+
+  const mutateStatus = (
+    action: NonNullable<typeof pendingStatusAction>,
+    payload: Parameters<typeof updateStatus.mutate>[0],
+  ) => {
+    setPendingStatusAction(action)
+    updateStatus.mutate(payload, {
+      onSettled: () => setPendingStatusAction(null),
+    })
+  }
 
   const handleStart = () => {
-    updateStatus.mutate({
-      id: game.id,
-      status: 'in_progress',
-      started_at: new Date().toISOString(),
-    })
+    mutateStatus(
+      { type: 'start', fromStatus: 'pending' },
+      {
+        id: game.id,
+        status: 'in_progress',
+        started_at: new Date().toISOString(),
+      },
+    )
   }
 
   const handlePause = () => {
-    updateStatus.mutate({ id: game.id, status: 'paused' })
+    mutateStatus(
+      { type: 'pause', fromStatus: 'in_progress' },
+      { id: game.id, status: 'paused' },
+    )
   }
 
   const handleResume = () => {
-    updateStatus.mutate({ id: game.id, status: 'in_progress' })
+    mutateStatus(
+      { type: 'resume', fromStatus: 'paused' },
+      { id: game.id, status: 'in_progress' },
+    )
   }
 
   const handleEnd = () => {
-    updateStatus.mutate({
-      id: game.id,
-      status: 'finished',
-      ended_at: new Date().toISOString(),
-    })
+    mutateStatus(
+      { type: 'end', fromStatus: game.status },
+      {
+        id: game.id,
+        status: 'finished',
+        ended_at: new Date().toISOString(),
+      },
+    )
   }
 
   const handleReopen = () => {
-    updateStatus.mutate({
-      id: game.id,
-      status: 'in_progress',
-      ended_at: null,
-    })
+    mutateStatus(
+      { type: 'reopen', fromStatus: 'finished' },
+      {
+        id: game.id,
+        status: 'in_progress',
+        ended_at: null,
+      },
+    )
   }
 
   const handleConfirmDelete = async () => {
@@ -145,34 +175,34 @@ export function JogoAnotar() {
             <ErrorMessage message={updateStatus.error.message || 'Nao foi possivel atualizar o status do jogo.'} />
           )}
           <div className="flex gap-2 flex-wrap">
-            {game.status === 'pending' && (
-              <Button onClick={handleStart} loading={updateStatus.isPending} size="lg" className="flex-1">
+            {controlStatus === 'pending' && (
+              <Button onClick={handleStart} loading={pendingStatusAction?.type === 'start'} disabled={updateStatus.isPending} size="lg" className="flex-1">
                 ▶ Iniciar jogo
               </Button>
             )}
-            {game.status === 'in_progress' && (
+            {controlStatus === 'in_progress' && (
               <>
-                <Button onClick={handlePause} loading={updateStatus.isPending} variant="secondary" className="flex-1">
+                <Button onClick={handlePause} loading={pendingStatusAction?.type === 'pause'} disabled={updateStatus.isPending} variant="secondary" className="flex-1">
                   ⏸ Pausar
                 </Button>
-                <Button onClick={handleEnd} loading={updateStatus.isPending} variant="danger" className="flex-1">
+                <Button onClick={handleEnd} loading={pendingStatusAction?.type === 'end'} disabled={updateStatus.isPending} variant="danger" className="flex-1">
                   ⏹ Encerrar
                 </Button>
               </>
             )}
-            {game.status === 'paused' && (
+            {controlStatus === 'paused' && (
               <>
-                <Button onClick={handleResume} loading={updateStatus.isPending} className="flex-1">
+                <Button onClick={handleResume} loading={pendingStatusAction?.type === 'resume'} disabled={updateStatus.isPending} className="flex-1">
                   ▶ Retomar
                 </Button>
-                <Button onClick={handleEnd} loading={updateStatus.isPending} variant="danger" className="flex-1">
+                <Button onClick={handleEnd} loading={pendingStatusAction?.type === 'end'} disabled={updateStatus.isPending} variant="danger" className="flex-1">
                   ⏹ Encerrar
                 </Button>
               </>
             )}
-            {game.status === 'finished' && (
+            {controlStatus === 'finished' && (
               <>
-                <Button onClick={handleReopen} loading={updateStatus.isPending} className="flex-1">
+                <Button onClick={handleReopen} loading={pendingStatusAction?.type === 'reopen'} disabled={updateStatus.isPending} className="flex-1">
                   ▶ Retomar jogo
                 </Button>
                 <p className="text-xs text-gray-400 w-full text-center mt-1">
