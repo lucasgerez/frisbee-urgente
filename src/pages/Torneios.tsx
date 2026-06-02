@@ -299,13 +299,13 @@ function MvpStatsSection({
       </div>
       {rows.length === 0 ? (
         <div className="px-3 py-3 text-sm text-gray-400">
-          Nenhum MVP registrado.
+          Nenhum destaque registrado.
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
           <div className="grid grid-cols-[1fr_64px] gap-2 px-3 py-2 text-[11px] font-black text-gray-400 uppercase">
             <span>Jogador</span>
-            <span className="text-center">MVPs</span>
+            <span className="text-center">Destaques</span>
           </div>
           {rows.map((playerStats) => (
             <div
@@ -651,7 +651,7 @@ export function Torneios() {
                     onClick={() => setExpandedMvpStatsTournamentId(mvpStatsExpanded ? null : tournament.id)}
                     className="w-full"
                   >
-                    {mvpStatsExpanded ? 'Ocultar estatísticas de MVP' : 'Ver estatísticas de MVP'}
+                    {mvpStatsExpanded ? 'Ocultar estatísticas de destaques' : 'Ver estatísticas de destaques'}
                   </Button>
                 )}
 
@@ -720,19 +720,19 @@ export function Torneios() {
                 {canViewStats && mvpStatsExpanded && (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     <div className="bg-amber-700 text-white px-3 py-2 text-xs font-black tracking-wide">
-                      ESTATÍSTICAS DE MVP
+                      ESTATÍSTICAS DE DESTAQUES
                     </div>
                     {matchMvpsLoading ? (
                       <div className="text-sm text-gray-400 text-center py-3">
-                        Carregando estatísticas de MVP...
+                        Carregando estatísticas de destaques...
                       </div>
                     ) : matchMvpsError ? (
                       <div className="p-3">
-                        <ErrorMessage message="Erro ao carregar estatísticas de MVP" />
+                        <ErrorMessage message="Erro ao carregar estatísticas de destaques" />
                       </div>
                     ) : mvpStats.length === 0 ? (
                       <div className="text-sm text-gray-400 text-center py-3">
-                        Nenhum MVP registrado neste torneio.
+                        Nenhum destaque registrado neste torneio.
                       </div>
                     ) : (
                       <div className="p-3 space-y-3">

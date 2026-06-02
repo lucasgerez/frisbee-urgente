@@ -19,9 +19,9 @@ interface MatchMvpModalProps {
 }
 
 function getFriendlyError(err: unknown) {
-  if (!(err instanceof Error)) return 'Erro ao salvar MVP.'
+  if (!(err instanceof Error)) return 'Erro ao salvar destaque.'
   if (err.message.includes('Editor ja cadastrou MVP para este jogo')) {
-    return 'Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.'
+    return 'Voce ja cadastrou destaque para este jogo. Cada editor pode votar apenas uma vez.'
   }
   if (
     err.message.includes('duplicate key') ||
@@ -29,7 +29,7 @@ function getFriendlyError(err: unknown) {
     err.message.includes('match_mvps_game_id_team_id_key') ||
     err.message.includes('duplicate key value violates unique constraint')
   ) {
-    return 'Este time ja possui MVP cadastrado para este jogo. Apenas admins podem corrigir a selecao.'
+    return 'Este time ja possui destaque cadastrado para este jogo. Apenas admins podem corrigir a selecao.'
   }
   return err.message
 }
@@ -99,7 +99,7 @@ export function MatchMvpModal({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!selectedTeam || !malePlayer || !femalePlayer) {
-      setError('Selecione o time e os MVPs masculino e feminino.')
+      setError('Selecione o time e os destaques masculino e feminino.')
       return
     }
 
@@ -107,7 +107,7 @@ export function MatchMvpModal({
     try {
       if (currentMvp) {
         if (!isAdmin) {
-          setError('Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.')
+          setError('Voce ja cadastrou destaque para este jogo. Cada editor pode votar apenas uma vez.')
           return
         }
         await updateMatchMvp.mutateAsync({
@@ -133,8 +133,19 @@ export function MatchMvpModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="MVP da partida">
+    <Modal open={open} onClose={onClose} title="Destaque Pindorama">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="rounded-xl border border-cobalt-100 bg-cobalt-50 p-3 text-sm text-cobalt-900">
+          <div className="font-bold mb-1">Critérios para o voto</div>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>Soube as regras de espírito de jogo e as colocou em prática</li>
+            <li>Foi imparcial quando a oportunidade surgiu</li>
+            <li>Fez diferença no desempenho do próprio time (em pontuação, liderança, organização, presença etc.) ao longo do jogo</li>
+            <li>Destacou-se em habilidades do ultimate (lançamento, corte, recepção, posicionamento etc.)</li>
+            <li>Manteve atitude positiva durante todo o jogo</li>
+          </ul>
+        </div>
+
         {currentMvp && (
           <div className={`rounded-xl border p-3 text-sm ${
             locked
@@ -142,8 +153,8 @@ export function MatchMvpModal({
               : 'bg-cobalt-50 border-cobalt-100 text-cobalt-800'
           }`}>
             {locked
-              ? 'Voce ja cadastrou MVP para este jogo. Cada editor pode votar apenas uma vez.'
-              : 'MVP ja cadastrado para este time. Como admin, voce pode corrigir a selecao.'}
+              ? 'Voce ja cadastrou destaque para este jogo. Cada editor pode votar apenas uma vez.'
+              : 'Destaque ja cadastrado para este time. Como admin, voce pode corrigir a selecao.'}
           </div>
         )}
 
@@ -162,7 +173,7 @@ export function MatchMvpModal({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            MVP masculino <span className="text-red-500">*</span>
+            Destaque masculino <span className="text-red-500">*</span>
           </label>
           <SearchableSelect
             options={malePlayers}
@@ -178,7 +189,7 @@ export function MatchMvpModal({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            MVP feminino <span className="text-red-500">*</span>
+            Destaque feminino <span className="text-red-500">*</span>
           </label>
           <SearchableSelect
             options={femalePlayers}
@@ -218,7 +229,7 @@ export function MatchMvpModal({
               disabled={!selectedTeam || !malePlayer || !femalePlayer}
               className="flex-1"
             >
-              {currentMvp ? 'Salvar correcao' : 'Salvar MVP'}
+              {currentMvp ? 'Salvar correcao' : 'Salvar destaque'}
             </Button>
           )}
         </div>
