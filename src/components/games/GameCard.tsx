@@ -68,7 +68,7 @@ export function GameCard({ game, goalCounts, onSpiritScore, onMatchMvp, onEdit, 
               onClick={() => onMatchMvp(game)}
               className="flex-1 px-3 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors border-l border-gray-100"
             >
-              MVP
+              Destaque
             </button>
           )}
           {onEdit && (

@@ -105,7 +105,7 @@ function PlayerRanking({ players, gender, showTeam }: PlayerRankingProps) {
                 <Stat label="G" value={p.goals} />
                 <Stat label="A" value={p.assists} />
                 <Stat label="D" value={p.defenses} />
-                <Stat label="MVP" value={p.mvp} highlight />
+                <Stat label="Destaque" value={p.mvp} highlight />
               </div>
             </div>
           ))}
