@@ -10,6 +10,31 @@ export interface TournamentSpiritStats {
   totalScore: number
 }
 
+export interface SpiritScoreGameDetail {
+  tournamentId: string
+  evaluatedTeamId: string
+  gameId: string
+  opponentTeamName: string
+  gameDate: string | null
+  rulesKnowledge: number
+  foulsContact: number
+  fairness: number
+  positiveAttitude: number
+  communication: number
+  totalScore: number
+}
+
+export const SPIRIT_ITEM_LABELS: Record<
+  'rules_knowledge' | 'fouls_contact' | 'fairness' | 'positive_attitude' | 'communication',
+  string
+> = {
+  rules_knowledge: 'Conhecimento de regras',
+  fouls_contact: 'Faltas e contato',
+  fairness: 'Imparcialidade',
+  positive_attitude: 'Atitude positiva',
+  communication: 'Comunicação',
+}
+
 export interface SpiritScorePayload {
   game_id: string
   evaluated_team_id: string
@@ -76,6 +101,7 @@ export function useCreateSpiritScore() {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })
       qc.invalidateQueries({ queryKey: ['spirit-scores'] })
       qc.invalidateQueries({ queryKey: ['tournament-spirit-stats'] })
+      qc.invalidateQueries({ queryKey: ['tournament-spirit-score-details'] })
     },
   })
 }
@@ -99,6 +125,42 @@ export function useTournamentSpiritStats(enabled = true) {
         scoreCount: Number(row.score_count),
         totalScore: Number(row.total_score),
       })) satisfies TournamentSpiritStats[]
+    },
+    enabled,
+  })
+}
+
+export function useTournamentSpiritScoreDetails(enabled = true) {
+  return useQuery({
+    queryKey: ['tournament-spirit-score-details'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_public_tournament_spirit_score_details')
+      if (error) throw error
+      return (data as {
+        tournament_id: string
+        evaluated_team_id: string
+        game_id: string
+        opponent_team_name: string
+        game_date: string | null
+        rules_knowledge: number
+        fouls_contact: number
+        fairness: number
+        positive_attitude: number
+        communication: number
+        total_score: number
+      }[]).map((row) => ({
+        tournamentId: row.tournament_id,
+        evaluatedTeamId: row.evaluated_team_id,
+        gameId: row.game_id,
+        opponentTeamName: row.opponent_team_name,
+        gameDate: row.game_date,
+        rulesKnowledge: Number(row.rules_knowledge),
+        foulsContact: Number(row.fouls_contact),
+        fairness: Number(row.fairness),
+        positiveAttitude: Number(row.positive_attitude),
+        communication: Number(row.communication),
+        totalScore: Number(row.total_score),
+      })) satisfies SpiritScoreGameDetail[]
     },
     enabled,
   })
@@ -133,6 +195,7 @@ export function useUpdateSpiritScore() {
       qc.invalidateQueries({ queryKey: ['games', vars.game_id, 'spirit-scores'] })
       qc.invalidateQueries({ queryKey: ['spirit-scores'] })
       qc.invalidateQueries({ queryKey: ['tournament-spirit-stats'] })
+      qc.invalidateQueries({ queryKey: ['tournament-spirit-score-details'] })
     },
   })
 }

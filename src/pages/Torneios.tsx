@@ -5,7 +5,12 @@ import { useTeams } from '../hooks/useTeams'
 import { useGames } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
 import { useDefenses } from '../hooks/useDefenses'
-import { useTournamentSpiritStats } from '../hooks/useSpiritScores'
+import {
+  useTournamentSpiritStats,
+  useTournamentSpiritScoreDetails,
+  SPIRIT_ITEM_LABELS,
+  type SpiritScoreGameDetail,
+} from '../hooks/useSpiritScores'
 import { useTournamentMvpStats } from '../hooks/useMatchMvps'
 import {
   useTournaments,
@@ -239,12 +244,122 @@ function computeSpiritTournamentStats(
     .sort((a, b) => b.totalScore - a.totalScore)
 }
 
+const SPIRIT_ITEM_ORDER = [
+  'rules_knowledge',
+  'fouls_contact',
+  'fairness',
+  'positive_attitude',
+  'communication',
+] as const
+
+function spiritDetailItemValue(detail: SpiritScoreGameDetail, key: (typeof SPIRIT_ITEM_ORDER)[number]) {
+  switch (key) {
+    case 'rules_knowledge':
+      return detail.rulesKnowledge
+    case 'fouls_contact':
+      return detail.foulsContact
+    case 'fairness':
+      return detail.fairness
+    case 'positive_attitude':
+      return detail.positiveAttitude
+    case 'communication':
+      return detail.communication
+  }
+}
+
+function SpiritGameRow({ detail }: { detail: SpiritScoreGameDetail }) {
+  const [itemsExpanded, setItemsExpanded] = useState(false)
+
+  return (
+    <div className="px-3 py-2">
+      <div className="grid grid-cols-[1fr_44px] gap-2 items-center">
+        <div className="min-w-0">
+          <span className="text-sm font-medium text-gray-800 truncate block">
+            vs {detail.opponentTeamName}
+          </span>
+          {detail.gameDate && (
+            <span className="text-[11px] text-gray-400">{formatDate(detail.gameDate)}</span>
+          )}
+        </div>
+        <span className="text-center text-sm font-black text-cobalt-700">{detail.totalScore}</span>
+      </div>
+      <button
+        type="button"
+        onClick={() => setItemsExpanded((open) => !open)}
+        className="mt-1 text-[11px] font-bold text-gray-400 hover:text-gray-600"
+      >
+        {itemsExpanded ? 'Ocultar itens' : 'Ver por item'}
+      </button>
+      {itemsExpanded && (
+        <div className="mt-1 divide-y divide-gray-100 rounded-lg bg-gray-50">
+          {SPIRIT_ITEM_ORDER.map((key) => (
+            <div
+              key={key}
+              className="grid grid-cols-[1fr_44px] gap-2 px-2 py-1 text-xs items-center"
+            >
+              <span className="text-gray-600 truncate">{SPIRIT_ITEM_LABELS[key]}</span>
+              <span className="text-center font-bold text-gray-700">
+                {spiritDetailItemValue(detail, key)}/4
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SpiritTeamRow({
+  teamStats,
+  gamesCount,
+  details,
+}: {
+  teamStats: SpiritTournamentTeamStats
+  gamesCount: number
+  details: SpiritScoreGameDetail[]
+}) {
+  const [gamesExpanded, setGamesExpanded] = useState(false)
+  const teamDetails = details.filter((detail) => detail.evaluatedTeamId === teamStats.teamId)
+
+  return (
+    <div>
+      <div className="grid grid-cols-[1fr_58px_72px] gap-2 px-3 py-2 text-sm items-center">
+        <div className="min-w-0">
+          <span className="font-medium text-gray-900 truncate block">{teamStats.teamName}</span>
+          {teamDetails.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setGamesExpanded((open) => !open)}
+              className="text-[11px] font-bold text-gray-400 hover:text-gray-600"
+            >
+              {gamesExpanded ? 'Ocultar jogos' : 'Ver por jogo'}
+            </button>
+          )}
+        </div>
+        <span className="text-center font-black text-cobalt-700">{teamStats.totalScore}</span>
+        <span className="text-center text-xs font-bold text-gray-500">
+          {teamStats.scoreCount}/{gamesCount}
+        </span>
+      </div>
+      {gamesExpanded && teamDetails.length > 0 && (
+        <div className="divide-y divide-gray-100 border-t border-gray-100 bg-gray-50/50">
+          {teamDetails.map((detail) => (
+            <SpiritGameRow key={detail.gameId} detail={detail} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SpiritStatsSection({
   stats,
   gamesCount,
+  details,
 }: {
   stats: SpiritTournamentTeamStats[]
   gamesCount: number
+  details: SpiritScoreGameDetail[]
 }) {
   if (stats.length === 0) {
     return (
@@ -257,16 +372,12 @@ function SpiritStatsSection({
   return (
     <div className="divide-y divide-gray-100">
       {stats.map((teamStats) => (
-        <div
+        <SpiritTeamRow
           key={teamStats.teamId}
-          className="grid grid-cols-[1fr_58px_72px] gap-2 px-3 py-2 text-sm items-center"
-        >
-          <span className="font-medium text-gray-900 truncate">{teamStats.teamName}</span>
-          <span className="text-center font-black text-cobalt-700">{teamStats.totalScore}</span>
-          <span className="text-center text-xs font-bold text-gray-500">
-            {teamStats.scoreCount}/{gamesCount}
-          </span>
-        </div>
+          teamStats={teamStats}
+          gamesCount={gamesCount}
+          details={details}
+        />
       ))}
     </div>
   )
@@ -406,6 +517,7 @@ export function Torneios() {
     isLoading: spiritScoresLoading,
     error: spiritScoresError,
   } = useTournamentSpiritStats()
+  const { data: spiritScoreDetails = [] } = useTournamentSpiritScoreDetails()
   const {
     data: matchMvps = [],
     isLoading: matchMvpsLoading,
@@ -776,7 +888,13 @@ export function Torneios() {
                         <ErrorMessage message="Erro ao carregar estatísticas de espírito" />
                       </div>
                     ) : (
-                      <SpiritStatsSection stats={spiritStats} gamesCount={tournamentGames.length} />
+                      <SpiritStatsSection
+                        stats={spiritStats}
+                        gamesCount={tournamentGames.length}
+                        details={spiritScoreDetails.filter(
+                          (detail) => detail.tournamentId === tournament.id
+                        )}
+                      />
                     )}
                   </div>
                 )}

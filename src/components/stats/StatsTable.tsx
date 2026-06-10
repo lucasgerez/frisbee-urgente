@@ -25,8 +25,8 @@ function computeTeamStats(
     },
     assists: {
       total: teamAssists.length,
-      M: teamAssists.filter((g) => g.scorer.gender === 'Masculino').length,
-      F: teamAssists.filter((g) => g.scorer.gender === 'Feminino').length,
+      M: teamAssists.filter((g) => g.assistant?.gender === 'Masculino').length,
+      F: teamAssists.filter((g) => g.assistant?.gender === 'Feminino').length,
     },
     defenses: {
       total: teamDefenses.length,
