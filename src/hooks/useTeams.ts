@@ -9,6 +9,7 @@ export function useTeams() {
       const { data, error } = await supabase
         .from('teams')
         .select('*')
+        .is('archived_at', null)
         .order('name')
       if (error) throw error
       return data as Team[]
@@ -36,7 +37,10 @@ export function useDeleteTeam() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('teams').delete().eq('id', id)
+      const { error } = await supabase
+        .from('teams')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['teams'] }),

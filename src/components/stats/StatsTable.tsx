@@ -20,18 +20,18 @@ function computeTeamStats(
   return {
     goals: {
       total: teamGoals.length,
-      M: teamGoals.filter((g) => g.scorer.gender === 'Masculino').length,
-      F: teamGoals.filter((g) => g.scorer.gender === 'Feminino').length,
+      M: teamGoals.filter((g) => (g.scorer_roster ?? g.scorer).gender === 'Masculino').length,
+      F: teamGoals.filter((g) => (g.scorer_roster ?? g.scorer).gender === 'Feminino').length,
     },
     assists: {
       total: teamAssists.length,
-      M: teamAssists.filter((g) => g.assistant?.gender === 'Masculino').length,
-      F: teamAssists.filter((g) => g.assistant?.gender === 'Feminino').length,
+      M: teamAssists.filter((g) => (g.assistant_roster ?? g.assistant)?.gender === 'Masculino').length,
+      F: teamAssists.filter((g) => (g.assistant_roster ?? g.assistant)?.gender === 'Feminino').length,
     },
     defenses: {
       total: teamDefenses.length,
-      M: teamDefenses.filter((d) => d.player.gender === 'Masculino').length,
-      F: teamDefenses.filter((d) => d.player.gender === 'Feminino').length,
+      M: teamDefenses.filter((d) => (d.roster_player ?? d.player).gender === 'Masculino').length,
+      F: teamDefenses.filter((d) => (d.roster_player ?? d.player).gender === 'Feminino').length,
     },
   }
 }

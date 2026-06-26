@@ -8,7 +8,8 @@ export function useDefenses() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('defenses')
-        .select('*, player:players(*)')
+        .select('*, player:players(*), roster_player:tournament_roster_players!defenses_roster_player_id_fkey(*)')
+        .is('archived_at', null)
         .order('created_at')
       if (error) throw error
       return data as DefenseWithPlayer[]
@@ -22,8 +23,9 @@ export function useGameDefenses(gameId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('defenses')
-        .select('*, player:players(*)')
+        .select('*, player:players(*), roster_player:tournament_roster_players!defenses_roster_player_id_fkey(*)')
         .eq('game_id', gameId!)
+        .is('archived_at', null)
         .order('created_at')
       if (error) throw error
       return data as DefenseWithPlayer[]
@@ -39,6 +41,7 @@ export function useCreateDefense() {
       game_id: string
       player_id: string
       team_id: string
+      roster_player_id: string
     }) => {
       const { data, error } = await supabase
         .from('defenses')
@@ -59,7 +62,10 @@ export function useDeleteDefense() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, game_id }: { id: string; game_id: string }) => {
-      const { error } = await supabase.from('defenses').delete().eq('id', id)
+      const { error } = await supabase
+        .from('defenses')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id)
       if (error) throw error
       return game_id
     },

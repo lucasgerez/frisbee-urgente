@@ -3,7 +3,7 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useGame } from '../hooks/useGames'
 import { useGameGoals, useCreateGoal, useDeleteGoal } from '../hooks/useGoals'
 import { useGameDefenses, useCreateDefense, useDeleteDefense } from '../hooks/useDefenses'
-import { usePlayers } from '../hooks/usePlayers'
+import { useTournamentRosterPlayers } from '../hooks/useTournaments'
 import { useUpdateGameStatus } from '../hooks/useGames'
 import { useGameTimer } from '../hooks/useGameTimer'
 import { useGameRealtime } from '../hooks/useGameRealtime'
@@ -15,7 +15,7 @@ import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { GameStatusBadge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { scoreColorClass } from '../lib/utils'
+import { isPastDate, scoreColorClass } from '../lib/utils'
 import { getPlayerDisplayName } from '../lib/players'
 
 export function JogoAnotar() {
@@ -37,8 +37,8 @@ export function JogoAnotar() {
   const { data: game, isLoading: gameLoading, error: gameError } = useGame(id)
   const { data: goals = [] } = useGameGoals(id)
   const { data: defenses = [] } = useGameDefenses(id)
-  const { data: playersA = [] } = usePlayers(game?.team_a_id)
-  const { data: playersB = [] } = usePlayers(game?.team_b_id)
+  const { data: playersA = [] } = useTournamentRosterPlayers(game?.tournament_id, game?.team_a_id)
+  const { data: playersB = [] } = useTournamentRosterPlayers(game?.tournament_id, game?.team_b_id)
   useGameRealtime(id)
 
   const createGoal = useCreateGoal()
@@ -47,7 +47,7 @@ export function JogoAnotar() {
   const deleteDefense = useDeleteDefense()
   const updateStatus = useUpdateGameStatus()
   const { display: timerDisplay } = useGameTimer(game)
-  const { isLoading: authLoading, session, canManage } = useAuth()
+  const { isLoading: authLoading, session, canManage, isAdmin } = useAuth()
 
   useEffect(() => {
     if (!authLoading && !session) {
@@ -58,7 +58,7 @@ export function JogoAnotar() {
   if (authLoading || gameLoading) return <LoadingScreen />
   if (!session) return null
   if (gameError || !game) return <ErrorMessage message="Jogo não encontrado" className="m-4" />
-  if (!canManage) {
+  if (!canManage || (!isAdmin && isPastDate(game.tournament.end_date))) {
     return (
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
         <ErrorMessage message="Sua conta nao tem permissao para anotar ou editar este jogo." />
@@ -271,14 +271,14 @@ export function JogoAnotar() {
                       {event.type === 'goal' && event.goal ? (
                         <>
                           <div className="text-sm font-medium text-gray-900 truncate">
-                            {getPlayerDisplayName(event.goal.scorer)}
-                            <span className={`ml-1 text-xs ${event.goal.scorer.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
-                              ({event.goal.scorer.gender === 'Masculino' ? 'M' : 'F'})
+                            {getPlayerDisplayName(event.goal.scorer_roster ?? event.goal.scorer)}
+                            <span className={`ml-1 text-xs ${(event.goal.scorer_roster ?? event.goal.scorer).gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
+                              ({(event.goal.scorer_roster ?? event.goal.scorer).gender === 'Masculino' ? 'M' : 'F'})
                             </span>
                           </div>
                           {event.goal.assistant && (
                             <div className="text-xs text-gray-400 truncate">
-                              Assist: {getPlayerDisplayName(event.goal.assistant)}
+                              Assist: {getPlayerDisplayName(event.goal.assistant_roster ?? event.goal.assistant)}
                             </div>
                           )}
                           <div className="text-xs text-gray-400">{event.goal.scoring_team.name}</div>
@@ -286,9 +286,9 @@ export function JogoAnotar() {
                       ) : event.defense ? (
                         <>
                           <div className="text-sm font-medium text-gray-900 truncate">
-                            {getPlayerDisplayName(event.defense.player)}
-                            <span className={`ml-1 text-xs ${event.defense.player.gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
-                              ({event.defense.player.gender === 'Masculino' ? 'M' : 'F'})
+                            {getPlayerDisplayName(event.defense.roster_player ?? event.defense.player)}
+                            <span className={`ml-1 text-xs ${(event.defense.roster_player ?? event.defense.player).gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
+                              ({(event.defense.roster_player ?? event.defense.player).gender === 'Masculino' ? 'M' : 'F'})
                             </span>
                           </div>
                           <div className="text-xs text-gray-400">Defesa</div>
@@ -302,13 +302,13 @@ export function JogoAnotar() {
                             setEventToDelete({
                               type: 'goal',
                               id: event.goal.id,
-                              label: `o gol de ${event.goal.scorer.name}`,
+                              label: `o gol de ${(event.goal.scorer_roster ?? event.goal.scorer).name}`,
                             })
                           } else if (event.defense) {
                             setEventToDelete({
                               type: 'defense',
                               id: event.defense.id,
-                              label: `a defesa de ${event.defense.player.name}`,
+                              label: `a defesa de ${(event.defense.roster_player ?? event.defense.player).name}`,
                             })
                           }
                         }}

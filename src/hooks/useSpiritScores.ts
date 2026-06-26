@@ -1,6 +1,41 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { SpiritScoreWithTeam } from '../types/database'
+import type { SpiritScoreWithTeam, TournamentTeam } from '../types/database'
+import { buildTournamentTeamSnapshotMap, getTournamentTeamSnapshotName } from '../lib/teamSnapshots'
+
+type SpiritScoreWithGameTournament = SpiritScoreWithTeam & {
+  game?: { tournament_id: string } | null
+}
+
+async function applySpiritTeamSnapshots(scores: SpiritScoreWithGameTournament[]) {
+  const tournamentIds = Array.from(
+    new Set(scores.map((score) => score.game?.tournament_id).filter(Boolean) as string[])
+  )
+  if (tournamentIds.length === 0) return scores as SpiritScoreWithTeam[]
+
+  const { data, error } = await supabase
+    .from('tournament_teams')
+    .select('tournament_id, team_id, team_name')
+    .in('tournament_id', tournamentIds)
+
+  if (error) throw error
+
+  const snapshots = buildTournamentTeamSnapshotMap(data as TournamentTeam[])
+  return scores.map((score) => ({
+    ...score,
+    evaluated_team: {
+      ...score.evaluated_team,
+      name: score.game?.tournament_id
+        ? getTournamentTeamSnapshotName(
+            snapshots,
+            score.game.tournament_id,
+            score.evaluated_team_id,
+            score.evaluated_team.name
+          )
+        : score.evaluated_team.name,
+    },
+  })) as SpiritScoreWithTeam[]
+}
 
 export interface TournamentSpiritStats {
   tournamentId: string
@@ -62,11 +97,12 @@ export function useSpiritScores(gameId?: string, enabled = true) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('spirit_scores')
-        .select('*, evaluated_team:teams(*)')
+        .select('*, game:games(tournament_id), evaluated_team:teams(*)')
         .eq('game_id', gameId!)
+        .is('archived_at', null)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return data as SpiritScoreWithTeam[]
+      return applySpiritTeamSnapshots(data as SpiritScoreWithGameTournament[])
     },
     enabled: !!gameId && enabled,
   })
@@ -78,10 +114,11 @@ export function useAllSpiritScores(enabled = true) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('spirit_scores')
-        .select('*, evaluated_team:teams(*)')
+        .select('*, game:games(tournament_id), evaluated_team:teams(*)')
+        .is('archived_at', null)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return data as SpiritScoreWithTeam[]
+      return applySpiritTeamSnapshots(data as SpiritScoreWithGameTournament[])
     },
     enabled,
   })

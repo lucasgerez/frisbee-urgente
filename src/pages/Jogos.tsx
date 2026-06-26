@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTournaments, useTournamentTeams } from '../hooks/useTournaments'
+import { useTournaments, useTournamentTeams, useTournamentRosterPlayers } from '../hooks/useTournaments'
 import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '../hooks/useGames'
 import { useGoals } from '../hooks/useGoals'
-import { usePlayers } from '../hooks/usePlayers'
 import { useSpiritScores } from '../hooks/useSpiritScores'
 import { useGameMatchMvps } from '../hooks/useMatchMvps'
 import { useAuth } from '../hooks/useAuth'
@@ -15,6 +14,7 @@ import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
+import { isPastDate } from '../lib/utils'
 import type { GameWithTeams, Tournament, Team } from '../types/database'
 
 export function Jogos() {
@@ -39,12 +39,13 @@ export function Jogos() {
   const { isLoading: authLoading, session, canManage, user, isEditor, isAdmin } = useAuth()
   const { data: spiritScores = [] } = useSpiritScores(spiritGame?.id, !!session && !!spiritGame)
   const { data: matchMvps = [] } = useGameMatchMvps(mvpGame?.id, !!mvpGame)
-  const { data: mvpPlayersA = [] } = usePlayers(mvpGame?.team_a_id)
-  const { data: mvpPlayersB = [] } = usePlayers(mvpGame?.team_b_id)
+  const { data: mvpPlayersA = [] } = useTournamentRosterPlayers(mvpGame?.tournament_id, mvpGame?.team_a_id)
+  const { data: mvpPlayersB = [] } = useTournamentRosterPlayers(mvpGame?.tournament_id, mvpGame?.team_b_id)
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
-  const canCreateActions = isEditor || isAdmin
+  const canCreateActionsForGame = (game: GameWithTeams) =>
+    isAdmin || (isEditor && !isPastDate(game.tournament.end_date))
 
   const handleTournamentChange = (t: Tournament | null) => {
     setSelectedTournament(t)
@@ -60,7 +61,7 @@ export function Jogos() {
     setShowForm(false)
   }
 
-  const requireCreatePermission = () => {
+  const requireCreatePermission = (tournament?: Tournament | null) => {
     setPermissionError(null)
 
     if (authLoading) return false
@@ -72,6 +73,11 @@ export function Jogos() {
 
     if (!canManage) {
       setPermissionError('Sua conta nao tem permissao para criar jogos.')
+      return false
+    }
+
+    if (tournament && !isAdmin && isPastDate(tournament.end_date)) {
+      setPermissionError('Apenas admins podem editar dados de torneios encerrados.')
       return false
     }
 
@@ -112,12 +118,12 @@ export function Jogos() {
   }
 
   const handleSpiritScore = (game: GameWithTeams) => {
-    if (!requireCreatePermission()) return
+    if (!requireCreatePermission(game.tournament)) return
     setSpiritGame(game)
   }
 
   const handleMatchMvp = (game: GameWithTeams) => {
-    if (!requireCreatePermission()) return
+    if (!requireCreatePermission(game.tournament)) return
     setMvpGame(game)
   }
 
@@ -126,7 +132,7 @@ export function Jogos() {
     if (!selectedTournament || !teamA || !teamB) return
     if (editingGame) {
       if (!requireAdmin()) return
-    } else if (!requireCreatePermission()) {
+    } else if (!requireCreatePermission(selectedTournament)) {
       return
     }
     try {
@@ -254,8 +260,8 @@ export function Jogos() {
                   (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_b_id
                 ).length,
               }}
-              onSpiritScore={canCreateActions ? handleSpiritScore : undefined}
-              onMatchMvp={canCreateActions ? handleMatchMvp : undefined}
+              onSpiritScore={canCreateActionsForGame(game) ? handleSpiritScore : undefined}
+              onMatchMvp={canCreateActionsForGame(game) ? handleMatchMvp : undefined}
               onEdit={isAdmin ? handleEdit : undefined}
               onDelete={isAdmin ? (game) => {
                 if (!requireAdmin()) return

@@ -16,6 +16,7 @@ export function usePlayers(teamId?: string) {
     queryFn: async () => {
       let query = supabase.from('players').select('*').order('name')
       if (teamId) query = query.eq('team_id', teamId)
+      query = query.is('archived_at', null)
       const { data, error } = await query
       if (error) throw error
       return data as Player[]
@@ -76,7 +77,10 @@ export function useDeletePlayer() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, team_id }: { id: string; team_id: string }) => {
-      const { error } = await supabase.from('players').delete().eq('id', id)
+      const { error } = await supabase
+        .from('players')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id)
       if (error) throw error
       return team_id
     },

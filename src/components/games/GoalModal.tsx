@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Player, Team } from '../../types/database'
+import type { Team, TournamentRosterPlayer } from '../../types/database'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { SearchableSelect } from '../ui/SearchableSelect'
@@ -11,12 +11,14 @@ interface GoalModalProps {
   onClose: () => void
   teamA: Team
   teamB: Team
-  playersA: Player[]
-  playersB: Player[]
+  playersA: TournamentRosterPlayer[]
+  playersB: TournamentRosterPlayer[]
   onConfirm: (data: {
     scorer_id: string
     assistant_id: string | null
     scoring_team_id: string
+    scorer_roster_player_id: string
+    assistant_roster_player_id: string | null
   }) => Promise<void>
 }
 
@@ -30,8 +32,8 @@ export function GoalModal({
   onConfirm,
 }: GoalModalProps) {
   const [activeTeam, setActiveTeam] = useState<'A' | 'B'>('A')
-  const [scorer, setScorer] = useState<Player | null>(null)
-  const [assistant, setAssistant] = useState<Player | null>(null)
+  const [scorer, setScorer] = useState<TournamentRosterPlayer | null>(null)
+  const [assistant, setAssistant] = useState<TournamentRosterPlayer | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -54,9 +56,11 @@ export function GoalModal({
     setLoading(true)
     try {
       await onConfirm({
-        scorer_id: scorer.id,
-        assistant_id: assistant?.id ?? null,
+        scorer_id: scorer.player_id,
+        assistant_id: assistant?.player_id ?? null,
         scoring_team_id: team.id,
+        scorer_roster_player_id: scorer.id,
+        assistant_roster_player_id: assistant?.id ?? null,
       })
       setScorer(null)
       setAssistant(null)

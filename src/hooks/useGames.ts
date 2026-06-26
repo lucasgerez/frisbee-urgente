@@ -1,6 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Game, GameStatus, GameWithTeams } from '../types/database'
+import type { Game, GameStatus, GameWithTeams, TournamentTeam } from '../types/database'
+import { buildTournamentTeamSnapshotMap, getTournamentTeamSnapshotName } from '../lib/teamSnapshots'
+
+async function applyGameTeamSnapshots(games: GameWithTeams[]) {
+  const tournamentIds = Array.from(new Set(games.map((game) => game.tournament_id)))
+  if (tournamentIds.length === 0) return games
+
+  const { data, error } = await supabase
+    .from('tournament_teams')
+    .select('tournament_id, team_id, team_name')
+    .in('tournament_id', tournamentIds)
+
+  if (error) throw error
+
+  const snapshots = buildTournamentTeamSnapshotMap(data as TournamentTeam[])
+  return games.map((game) => ({
+    ...game,
+    team_a: {
+      ...game.team_a,
+      name: getTournamentTeamSnapshotName(snapshots, game.tournament_id, game.team_a_id, game.team_a.name),
+    },
+    team_b: {
+      ...game.team_b,
+      name: getTournamentTeamSnapshotName(snapshots, game.tournament_id, game.team_b_id, game.team_b.name),
+    },
+  }))
+}
 
 export function useGames() {
   return useQuery({
@@ -9,9 +35,10 @@ export function useGames() {
       const { data, error } = await supabase
         .from('games')
         .select('*, team_a:teams!games_team_a_id_fkey(*), team_b:teams!games_team_b_id_fkey(*), tournament:tournaments(*)')
+        .is('archived_at', null)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return data as GameWithTeams[]
+      return applyGameTeamSnapshots(data as GameWithTeams[])
     },
   })
 }
@@ -24,9 +51,11 @@ export function useGame(id?: string) {
         .from('games')
         .select('*, team_a:teams!games_team_a_id_fkey(*), team_b:teams!games_team_b_id_fkey(*), tournament:tournaments(*)')
         .eq('id', id!)
+        .is('archived_at', null)
         .single()
       if (error) throw error
-      return data as GameWithTeams
+      const [game] = await applyGameTeamSnapshots([data as GameWithTeams])
+      return game
     },
     enabled: !!id,
   })
@@ -128,7 +157,10 @@ export function useDeleteGame() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('games').delete().eq('id', id)
+      const { error } = await supabase
+        .from('games')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['games'] }),

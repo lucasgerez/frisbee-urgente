@@ -7,6 +7,7 @@ import type {
   Team,
   TournamentTeam,
 } from '../types/database'
+import { applyTeamSnapshotName } from '../lib/teamSnapshots'
 
 export interface PlayerTournamentStats {
   player: Player
@@ -29,6 +30,7 @@ export function useTournamentStats(tournamentId?: string, enabled = true) {
         .from('games')
         .select('id')
         .eq('tournament_id', tournamentId!)
+        .is('archived_at', null)
       if (gErr) throw gErr
 
       const gameIds = (gameRows as { id: string }[]).map((g) => g.id)
@@ -37,20 +39,23 @@ export function useTournamentStats(tournamentId?: string, enabled = true) {
         supabase
           .from('tournament_teams')
           .select('*, team:teams(*)')
-          .eq('tournament_id', tournamentId!),
+          .eq('tournament_id', tournamentId!)
+          .is('archived_at', null),
         gameIds.length > 0
           ? supabase
               .from('goals')
               .select(
-                '*, scorer:players!goals_scorer_id_fkey(*), assistant:players!goals_assistant_id_fkey(*), scoring_team:teams(*)'
+                '*, scorer:players!goals_scorer_id_fkey(*), assistant:players!goals_assistant_id_fkey(*), scoring_team:teams(*), scorer_roster:tournament_roster_players!goals_scorer_roster_player_id_fkey(*), assistant_roster:tournament_roster_players!goals_assistant_roster_player_id_fkey(*)'
               )
               .in('game_id', gameIds)
+              .is('archived_at', null)
           : Promise.resolve({ data: [] as GoalWithPlayers[], error: null }),
         gameIds.length > 0
           ? supabase
               .from('defenses')
-              .select('*, player:players(*)')
+              .select('*, player:players(*), roster_player:tournament_roster_players!defenses_roster_player_id_fkey(*)')
               .in('game_id', gameIds)
+              .is('archived_at', null)
           : Promise.resolve({ data: [] as DefenseWithPlayer[], error: null }),
       ])
 
@@ -59,8 +64,8 @@ export function useTournamentStats(tournamentId?: string, enabled = true) {
       if (defensesRes.error) throw defensesRes.error
 
       const teamsMap = new Map<string, Team>()
-      ;(teamsRes.data as (TournamentTeam & { team: Team })[]).forEach(({ team }) =>
-        teamsMap.set(team.id, team)
+      ;(teamsRes.data as (TournamentTeam & { team: Team })[]).forEach((link) =>
+        teamsMap.set(link.team.id, applyTeamSnapshotName(link.team, link))
       )
 
       const playerMap = new Map<string, PlayerTournamentStats>()
