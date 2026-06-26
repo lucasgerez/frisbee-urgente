@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useTournaments, useTournamentTeams } from '../hooks/useTournaments'
+import { useTournaments, useTournamentTeamLinks } from '../hooks/useTournaments'
 import {
   useTournamentStats,
   type PlayerTournamentStats,
@@ -122,7 +122,7 @@ export function TorneioEstatisticas() {
 
   const { data: tournaments = [], isLoading: tournamentLoading } =
     useTournaments()
-  const { data: teams = [] } = useTournamentTeams(id)
+  const { data: teamLinks = [] } = useTournamentTeamLinks(id)
   const { isLoading: authLoading, isAdmin } = useAuth()
 
   const tournament = tournaments.find((t) => t.id === id)
@@ -157,6 +157,7 @@ export function TorneioEstatisticas() {
   }
 
   const players = stats?.players ?? []
+  const teams = teamLinks.map((link) => link.team)
   const filtered =
     tab === 'time' && selectedTeam
       ? players.filter((p) => p.team?.id === selectedTeam.id)

@@ -85,22 +85,25 @@ function computePlayerTournamentStats(
   }
 
   tournamentGoals.forEach((goal) => {
-    ensurePlayerStats(goal.scorer_id, getPlayerDisplayName(goal.scorer), goal.scorer.gender).goals += 1
+    const scorer = goal.scorer_roster ?? goal.scorer
+    ensurePlayerStats(goal.scorer_id, getPlayerDisplayName(scorer), scorer.gender).goals += 1
 
     if (goal.assistant) {
+      const assistant = goal.assistant_roster ?? goal.assistant
       ensurePlayerStats(
         goal.assistant_id!,
-        getPlayerDisplayName(goal.assistant),
-        goal.assistant.gender
+        getPlayerDisplayName(assistant),
+        assistant.gender
       ).assists += 1
     }
   })
 
   tournamentDefenses.forEach((defense) => {
+    const player = defense.roster_player ?? defense.player
     ensurePlayerStats(
       defense.player_id,
-      getPlayerDisplayName(defense.player),
-      defense.player.gender
+      getPlayerDisplayName(player),
+      player.gender
     ).defenses += 1
   })
 
@@ -523,9 +526,10 @@ export function Torneios() {
     isLoading: matchMvpsLoading,
     error: matchMvpsError,
   } = useTournamentMvpStats()
-  const canEditActions = isEditor || isAdmin
+  const canEditTournament = (tournament: Tournament) =>
+    isAdmin || (isEditor && !isPastDate(tournament.end_date))
 
-  const requireEditor = () => {
+  const requireEditor = (tournament?: Tournament | null) => {
     setPermissionError(null)
 
     if (authLoading) return false
@@ -537,6 +541,11 @@ export function Torneios() {
 
     if (!canManage) {
       setPermissionError('Sua conta nao tem permissao para criar ou editar torneios.')
+      return false
+    }
+
+    if (tournament && !isAdmin && isPastDate(tournament.end_date)) {
+      setPermissionError('Apenas admins podem editar dados de torneios encerrados.')
       return false
     }
 
@@ -574,7 +583,7 @@ export function Torneios() {
   }
 
   const handleEdit = (tournament: Tournament) => {
-    if (!requireEditor()) return
+    if (!requireEditor(tournament)) return
     setEditingTournament(tournament)
     setName(tournament.name)
     setEndDate(tournament.end_date ?? '')
@@ -595,7 +604,7 @@ export function Torneios() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    if (!requireEditor()) return
+    if (!requireEditor(editingTournament)) return
     try {
       const payload = {
         name: name.trim(),
@@ -619,6 +628,13 @@ export function Torneios() {
     <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
       <h1 className="text-2xl font-black text-gray-900">Torneios</h1>
       {permissionError && <ErrorMessage message={permissionError} />}
+
+      <Link
+        to="/torneios/times"
+        className="block w-full rounded-xl border border-cobalt-100 bg-white px-4 py-3 text-center text-sm font-black text-cobalt-700 shadow-sm hover:bg-cobalt-50 transition-colors"
+      >
+        Ver times por torneio
+      </Link>
 
       {showForm ? (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
@@ -736,9 +752,9 @@ export function Torneios() {
                       </div>
                     )}
                   </div>
-                  {(canEditActions || isAdmin) && (
+                  {(canEditTournament(tournament) || isAdmin) && (
                     <div className="flex gap-1 shrink-0">
-                      {canEditActions && (
+                      {canEditTournament(tournament) && (
                         <Button
                           variant="ghost"
                           size="sm"

@@ -4,6 +4,7 @@ import { Home } from './pages/Home'
 import { Times } from './pages/Times'
 import { Torneios } from './pages/Torneios'
 import { TorneioEstatisticas } from './pages/TorneioEstatisticas'
+import { TorneioTimes } from './pages/TorneioTimes'
 import { Jogos } from './pages/Jogos'
 import { JogoView } from './pages/JogoView'
 import { JogoAnotar } from './pages/JogoAnotar'
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'times', element: <Times /> },
       { path: 'torneios', element: <Torneios /> },
+      { path: 'torneios/times', element: <TorneioTimes /> },
       { path: 'torneios/:id/estatisticas', element: <TorneioEstatisticas /> },
       { path: 'jogos', element: <Jogos /> },
       { path: 'jogos/:id', element: <JogoView /> },

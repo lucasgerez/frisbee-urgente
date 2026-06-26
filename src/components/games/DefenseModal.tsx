@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Player, Team } from '../../types/database'
+import type { Team, TournamentRosterPlayer } from '../../types/database'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { SearchableSelect } from '../ui/SearchableSelect'
@@ -11,9 +11,9 @@ interface DefenseModalProps {
   onClose: () => void
   teamA: Team
   teamB: Team
-  playersA: Player[]
-  playersB: Player[]
-  onConfirm: (data: { player_id: string; team_id: string }) => Promise<void>
+  playersA: TournamentRosterPlayer[]
+  playersB: TournamentRosterPlayer[]
+  onConfirm: (data: { player_id: string; team_id: string; roster_player_id: string }) => Promise<void>
 }
 
 export function DefenseModal({
@@ -26,7 +26,7 @@ export function DefenseModal({
   onConfirm,
 }: DefenseModalProps) {
   const [activeTeam, setActiveTeam] = useState<'A' | 'B'>('A')
-  const [player, setPlayer] = useState<Player | null>(null)
+  const [player, setPlayer] = useState<TournamentRosterPlayer | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -47,7 +47,7 @@ export function DefenseModal({
     setError('')
     setLoading(true)
     try {
-      await onConfirm({ player_id: player.id, team_id: team.id })
+      await onConfirm({ player_id: player.player_id, team_id: team.id, roster_player_id: player.id })
       setPlayer(null)
       onClose()
     } catch (err) {

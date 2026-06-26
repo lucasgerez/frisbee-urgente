@@ -8,6 +8,7 @@ export type GameStatus = 'pending' | 'in_progress' | 'paused' | 'finished'
 export interface Team {
   id: string
   name: string
+  archived_at: string | null
   created_at: string
 }
 
@@ -18,6 +19,7 @@ export interface Player {
   number: string | null
   team_id: string
   gender: Gender
+  archived_at: string | null
   created_at: string
 }
 
@@ -25,6 +27,7 @@ export interface Tournament {
   id: string
   name: string
   end_date: string | null
+  archived_at: string | null
   created_at: string
 }
 
@@ -32,6 +35,21 @@ export interface TournamentTeam {
   id: string
   tournament_id: string
   team_id: string
+  team_name: string
+  archived_at: string | null
+}
+
+export interface TournamentRosterPlayer {
+  id: string
+  tournament_id: string
+  team_id: string
+  player_id: string
+  name: string
+  nickname: string | null
+  number: string | null
+  gender: Gender
+  created_at: string
+  archived_at: string | null
 }
 
 export interface Game {
@@ -42,6 +60,7 @@ export interface Game {
   status: GameStatus
   started_at: string | null
   ended_at: string | null
+  archived_at: string | null
   created_at: string
 }
 
@@ -51,6 +70,9 @@ export interface Goal {
   scorer_id: string
   assistant_id: string | null
   scoring_team_id: string
+  scorer_roster_player_id: string | null
+  assistant_roster_player_id: string | null
+  archived_at: string | null
   created_at: string
 }
 
@@ -59,6 +81,8 @@ export interface Defense {
   game_id: string
   player_id: string
   team_id: string
+  roster_player_id: string | null
+  archived_at: string | null
   created_at: string
 }
 
@@ -80,6 +104,7 @@ export interface SpiritScore {
   positive_attitude: number
   communication: number
   total_score: number
+  archived_at: string | null
   created_at: string
   updated_at: string
 }
@@ -90,7 +115,10 @@ export interface MatchMvp {
   team_id: string
   male_player_id: string
   female_player_id: string
+  male_roster_player_id: string | null
+  female_roster_player_id: string | null
   created_by: string
+  archived_at: string | null
   created_at: string
   updated_at: string
 }
@@ -107,10 +135,13 @@ export interface GoalWithPlayers extends Goal {
   scorer: Player
   assistant: Player | null
   scoring_team: Team
+  scorer_roster?: TournamentRosterPlayer | null
+  assistant_roster?: TournamentRosterPlayer | null
 }
 
 export interface DefenseWithPlayer extends Defense {
   player: Player
+  roster_player?: TournamentRosterPlayer | null
 }
 
 export interface SpiritScoreWithTeam extends SpiritScore {
@@ -121,6 +152,8 @@ export interface MatchMvpWithPlayers extends MatchMvp {
   team: Team
   male_player: Player
   female_player: Player
+  male_roster_player?: TournamentRosterPlayer | null
+  female_roster_player?: TournamentRosterPlayer | null
 }
 
 // ─── Supabase Database generic type ──────────────────────────────────────────
@@ -150,6 +183,12 @@ export type Database = {
         Row: TournamentTeam
         Insert: Omit<TournamentTeam, 'id'>
         Update: Partial<Omit<TournamentTeam, 'id'>>
+        Relationships: []
+      }
+      tournament_roster_players: {
+        Row: TournamentRosterPlayer
+        Insert: Omit<TournamentRosterPlayer, 'id' | 'created_at'>
+        Update: Partial<Omit<TournamentRosterPlayer, 'id' | 'created_at'>>
         Relationships: []
       }
       games: {

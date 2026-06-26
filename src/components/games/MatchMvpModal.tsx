@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { GameWithTeams, MatchMvpWithPlayers, Player, Team } from '../../types/database'
+import type { GameWithTeams, MatchMvpWithPlayers, Team, TournamentRosterPlayer } from '../../types/database'
 import { useCreateMatchMvp, useUpdateMatchMvp } from '../../hooks/useMatchMvps'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
@@ -11,8 +11,8 @@ interface MatchMvpModalProps {
   open: boolean
   onClose: () => void
   game: GameWithTeams | null
-  playersA: Player[]
-  playersB: Player[]
+  playersA: TournamentRosterPlayer[]
+  playersB: TournamentRosterPlayer[]
   currentUserId: string
   isAdmin: boolean
   mvps: MatchMvpWithPlayers[]
@@ -45,8 +45,8 @@ export function MatchMvpModal({
   mvps,
 }: MatchMvpModalProps) {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
-  const [malePlayer, setMalePlayer] = useState<Player | null>(null)
-  const [femalePlayer, setFemalePlayer] = useState<Player | null>(null)
+  const [malePlayer, setMalePlayer] = useState<TournamentRosterPlayer | null>(null)
+  const [femalePlayer, setFemalePlayer] = useState<TournamentRosterPlayer | null>(null)
   const [error, setError] = useState('')
   const createMatchMvp = useCreateMatchMvp()
   const updateMatchMvp = useUpdateMatchMvp()
@@ -67,6 +67,11 @@ export function MatchMvpModal({
   const selectedTeamMvp = mvps.find((mvp) => mvp.team_id === selectedTeam?.id) ?? null
   const currentMvp = isAdmin ? selectedTeamMvp : editorMvp
   const locked = !!editorMvp && !isAdmin
+  const findRosterPlayer = (teamId: string | undefined, playerId: string | null | undefined) => {
+    if (!teamId || !playerId || !game) return null
+    const players = teamId === game.team_a_id ? playersA : teamId === game.team_b_id ? playersB : []
+    return players.find((player) => player.player_id === playerId) ?? null
+  }
 
   useEffect(() => {
     if (!open || !game) return
@@ -77,16 +82,16 @@ export function MatchMvpModal({
       ?? game.team_a
     setSelectedTeam(initialTeam)
     const initialMvp = mvps.find((mvp) => mvp.team_id === initialTeam.id) ?? null
-    setMalePlayer(initialMvp?.male_player ?? null)
-    setFemalePlayer(initialMvp?.female_player ?? null)
+    setMalePlayer(initialMvp?.male_roster_player ?? findRosterPlayer(initialTeam.id, initialMvp?.male_player_id))
+    setFemalePlayer(initialMvp?.female_roster_player ?? findRosterPlayer(initialTeam.id, initialMvp?.female_player_id))
     setError('')
-  }, [open, game, mvps, isAdmin, editorMvp])
+  }, [open, game, mvps, isAdmin, editorMvp, playersA, playersB])
 
   useEffect(() => {
     if (!open) return
-    setMalePlayer(currentMvp?.male_player ?? null)
-    setFemalePlayer(currentMvp?.female_player ?? null)
-  }, [open, currentMvp])
+    setMalePlayer(currentMvp?.male_roster_player ?? findRosterPlayer(currentMvp?.team_id, currentMvp?.male_player_id))
+    setFemalePlayer(currentMvp?.female_roster_player ?? findRosterPlayer(currentMvp?.team_id, currentMvp?.female_player_id))
+  }, [open, currentMvp, playersA, playersB])
 
   if (!game) return null
 
@@ -114,15 +119,19 @@ export function MatchMvpModal({
           id: currentMvp.id,
           game_id: game.id,
           team_id: selectedTeam.id,
-          male_player_id: malePlayer.id,
-          female_player_id: femalePlayer.id,
+          male_player_id: malePlayer.player_id,
+          female_player_id: femalePlayer.player_id,
+          male_roster_player_id: malePlayer.id,
+          female_roster_player_id: femalePlayer.id,
         })
       } else {
         await createMatchMvp.mutateAsync({
           game_id: game.id,
           team_id: selectedTeam.id,
-          male_player_id: malePlayer.id,
-          female_player_id: femalePlayer.id,
+          male_player_id: malePlayer.player_id,
+          female_player_id: femalePlayer.player_id,
+          male_roster_player_id: malePlayer.id,
+          female_roster_player_id: femalePlayer.id,
           created_by: currentUserId,
         })
       }
@@ -208,10 +217,10 @@ export function MatchMvpModal({
             <div className="font-bold text-gray-900 mb-1">Selecao atual</div>
             <div className="text-gray-600">{currentMvp.team.name}</div>
             <div className="text-gray-600">
-              Masculino: {getPlayerDisplayName(currentMvp.male_player)}
+              Masculino: {getPlayerDisplayName(currentMvp.male_roster_player ?? currentMvp.male_player)}
             </div>
             <div className="text-gray-600">
-              Feminino: {getPlayerDisplayName(currentMvp.female_player)}
+              Feminino: {getPlayerDisplayName(currentMvp.female_roster_player ?? currentMvp.female_player)}
             </div>
           </div>
         )}
