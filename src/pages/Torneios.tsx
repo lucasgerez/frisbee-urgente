@@ -34,6 +34,8 @@ interface PlayerTournamentStats {
   playerId: string
   playerName: string
   gender: Gender
+  teamName: string | null
+  jerseyNumber: string | null
   goals: number
   assists: number
   defenses: number
@@ -61,7 +63,8 @@ interface MvpTournamentPlayerStats {
 function computePlayerTournamentStats(
   gameIds: Set<string>,
   goals: GoalWithPlayers[],
-  defenses: DefenseWithPlayer[]
+  defenses: DefenseWithPlayer[],
+  teams: Team[]
 ): PlayerTournamentStats[] {
   const tournamentGoals = goals.filter((goal) => gameIds.has(goal.game_id))
   const tournamentDefenses = defenses.filter((defense) => gameIds.has(defense.game_id))
@@ -70,12 +73,16 @@ function computePlayerTournamentStats(
   const ensurePlayerStats = (
     playerId: string,
     playerName: string,
-    gender: Gender
+    gender: Gender,
+    teamName: string | null,
+    jerseyNumber: string | null
   ) => {
     const playerStats = stats.get(playerId) ?? {
       playerId,
       playerName,
       gender,
+      teamName,
+      jerseyNumber,
       goals: 0,
       assists: 0,
       defenses: 0,
@@ -86,24 +93,35 @@ function computePlayerTournamentStats(
 
   tournamentGoals.forEach((goal) => {
     const scorer = goal.scorer_roster ?? goal.scorer
-    ensurePlayerStats(goal.scorer_id, getPlayerDisplayName(scorer), scorer.gender).goals += 1
+    ensurePlayerStats(
+      goal.scorer_id,
+      getPlayerDisplayName(scorer),
+      scorer.gender,
+      goal.scoring_team?.name ?? null,
+      scorer.number ?? null
+    ).goals += 1
 
     if (goal.assistant) {
       const assistant = goal.assistant_roster ?? goal.assistant
       ensurePlayerStats(
         goal.assistant_id!,
         getPlayerDisplayName(assistant),
-        assistant.gender
+        assistant.gender,
+        goal.scoring_team?.name ?? null,
+        assistant.number ?? null
       ).assists += 1
     }
   })
 
   tournamentDefenses.forEach((defense) => {
     const player = defense.roster_player ?? defense.player
+    const teamName = teams.find((t) => t.id === defense.team_id)?.name ?? null
     ensurePlayerStats(
       defense.player_id,
       getPlayerDisplayName(player),
-      player.gender
+      player.gender,
+      teamName,
+      player.number ?? null
     ).defenses += 1
   })
 
@@ -226,6 +244,12 @@ function PlayerStatsSection({
             >
               <span className="font-medium text-gray-900 truncate">
                 {playerStats.playerName}
+                {playerStats.jerseyNumber && (
+                  <span className="text-gray-500"> #{playerStats.jerseyNumber}</span>
+                )}
+                {playerStats.teamName && (
+                  <span className="text-gray-400 font-normal"> - {playerStats.teamName}</span>
+                )}
               </span>
               <span className="text-center font-bold text-gray-700">{playerStats.goals}</span>
               <span className="text-center font-bold text-gray-700">{playerStats.assists}</span>
@@ -723,7 +747,7 @@ export function Torneios() {
           tournaments.map((tournament) => {
             const tournamentGames = games.filter((game) => game.tournament_id === tournament.id)
             const tournamentGameIds = new Set(tournamentGames.map((game) => game.id))
-            const tournamentStats = computePlayerTournamentStats(tournamentGameIds, goals, defenses)
+            const tournamentStats = computePlayerTournamentStats(tournamentGameIds, goals, defenses, teams)
             const isExpanded = expandedTournamentId === tournament.id
             const statsExpanded = expandedStatsTournamentId === tournament.id
             const spiritStatsExpanded = expandedSpiritStatsTournamentId === tournament.id

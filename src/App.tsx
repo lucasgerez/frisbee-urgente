@@ -11,6 +11,7 @@ import { JogoAnotar } from './pages/JogoAnotar'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { AuthConfirm } from './pages/AuthConfirm'
+import { Admin } from './pages/Admin'
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
       { path: 'login', element: <Login /> },
       { path: 'signup', element: <Signup /> },
       { path: 'auth/confirm', element: <AuthConfirm /> },
+      { path: 'admin', element: <Admin /> },
     ],
   },
 ])

@@ -5,7 +5,7 @@ import { Button } from '../ui/Button'
 
 export function Header() {
   const navigate = useNavigate()
-  const { user, profile, canManage, role, signOut } = useAuth()
+  const { user, profile, canManage, isAdmin, role, signOut } = useAuth()
   const [signOutError, setSignOutError] = useState<string | null>(null)
   const displayName =
     profile?.full_name ||
@@ -42,6 +42,14 @@ export function Header() {
             </div>
             {signOutError && <div className="text-[11px] text-red-300">{signOutError}</div>}
           </div>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="text-xs font-semibold text-gold-400 hover:text-gold-300 transition-colors"
+            >
+              Admin
+            </Link>
+          )}
           <Button
             size="sm"
             variant="secondary"
