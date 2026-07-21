@@ -44,6 +44,8 @@ export function Jogos() {
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
+  const availableTournaments = tournaments.filter((t) => !isPastDate(t.end_date))
+  const isTournamentSelectionLocked = Boolean(editingGame) || Boolean(selectedTournament && isPastDate(selectedTournament.end_date))
   const canCreateActionsForGame = (game: GameWithTeams) =>
     isAdmin || (isEditor && !isPastDate(game.tournament.end_date))
 
@@ -168,12 +170,13 @@ export function Jogos() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Torneio</label>
             <SearchableSelect
-              options={tournaments}
+              options={availableTournaments}
               value={selectedTournament}
               onChange={handleTournamentChange}
               getLabel={(t) => t.name}
               getValue={(t) => t.id}
               placeholder="Selecionar torneio..."
+              disabled={isTournamentSelectionLocked}
             />
           </div>
 
