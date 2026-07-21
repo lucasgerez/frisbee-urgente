@@ -90,6 +90,7 @@ export function JogoAnotar() {
         id: game.id,
         status: 'in_progress',
         started_at: new Date().toISOString(),
+        ended_at: null,
       },
     )
   }
@@ -97,14 +98,29 @@ export function JogoAnotar() {
   const handlePause = () => {
     mutateStatus(
       { type: 'pause', fromStatus: 'in_progress' },
-      { id: game.id, status: 'paused' },
+      {
+        id: game.id,
+        status: 'paused',
+        ended_at: new Date().toISOString(),
+      },
     )
   }
 
   const handleResume = () => {
+    if (!game.started_at || !game.ended_at) return
+
+    const startedAtMs = new Date(game.started_at).getTime()
+    const pausedAtMs = new Date(game.ended_at).getTime()
+    const elapsedBeforePauseMs = Math.max(0, pausedAtMs - startedAtMs)
+
     mutateStatus(
       { type: 'resume', fromStatus: 'paused' },
-      { id: game.id, status: 'in_progress' },
+      {
+        id: game.id,
+        status: 'in_progress',
+        started_at: new Date(Date.now() - elapsedBeforePauseMs).toISOString(),
+        ended_at: null,
+      },
     )
   }
 
