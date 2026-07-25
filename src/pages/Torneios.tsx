@@ -470,17 +470,16 @@ function TableRulesSection() {
       </div>
       <div className="p-3 space-y-3 text-sm text-gray-700">
         <p>
-          Essas regras estão de acordo com o Regulamento do Pindorama 2026. Em caso de dúvida,
+          Essas regras estão de acordo com o Regulamento do Chápeu Mineiro 2026. Em caso de dúvida,
           é só consultar!
         </p>
 
         <div className="space-y-1">
           <p>
-            O torneio seguirá as regras oficiais (versão 2026) da WFDF e a primeira proporção
-            será feita por sorteio e as seguintes a proporção de ABBA.
+            O torneio seguirá as regras oficiais (versão 2026) da WFDF e a proporção
+            será sempre 3:2
           </p>
-          <p><strong>Linhas Proporção Homem:</strong> 4 homens e 3 mulheres</p>
-          <p><strong>Linhas Proporção Mulher:</strong> 4 mulheres e 3 homens</p>
+          <p><strong>Linhas Proporção Homem:</strong> 3 homens e 2 mulheres</p>
         </div>
 
         <div className="space-y-1 text-xs text-gray-600">
@@ -492,7 +491,7 @@ function TableRulesSection() {
         </div>
 
         <div className="space-y-1">
-          <p><strong>O jogo vai até 60 minutos ou quando um dos times fizer 13 pontos.</strong></p>
+          <p><strong>O jogo vai até 55 minutos ou quando um dos times fizer 13 pontos.</strong></p>
           <div className="space-y-1 text-xs text-gray-600">
             <p>*Em caso de término do tempo regulamentar com o “disco em jogo”, termina-se o ponto.</p>
             <p>*Em caso de empate, joga-se o gol de ouro.</p>
@@ -501,10 +500,10 @@ function TableRulesSection() {
 
         <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100">
           <div className="px-3 py-2">
-            <strong>Meio-tempo:</strong> 30 min ou 7 pontos / 3 min
+            <strong>Meio-tempo:</strong> 25 min ou 7 pontos / 3 min
           </div>
           <div className="px-3 py-2">
-            <strong>Time out:</strong> 1 pedido por tempo por time por período / 60 seg
+            <strong>Time out:</strong> 1 pedido por tempo por time por período / 75 seg
           </div>
         </div>
       </div>
