@@ -29,6 +29,7 @@ export interface Tournament {
   end_date: string | null
   archived_at: string | null
   created_at: string
+  rules: string
 }
 
 export interface TournamentTeam {

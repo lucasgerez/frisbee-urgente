@@ -29,6 +29,9 @@ import { formatDate, formatDateOnly, formatDateTime, isPastDate, scoreColorClass
 import { getPlayerDisplayName } from '../lib/players'
 import { useAuth } from '../hooks/useAuth'
 import type { DefenseWithPlayer, Gender, GoalWithPlayers, Team, Tournament } from '../types/database'
+import ReactQuill from 'react-quill-new'
+import 'react-quill-new/dist/quill.snow.css'
+import DOMPurify from "dompurify";
 
 interface PlayerTournamentStats {
   playerId: string
@@ -462,52 +465,27 @@ function MvpStatsSection({
   )
 }
 
-function TableRulesSection() {
+function TableRulesSection({ rules }: { rules: string }) {
+  const rulesHtml = rules.replace(/&nbsp;/g, ' ')
+
+  const sanitizedRules = DOMPurify.sanitize(rulesHtml, {
+    USE_PROFILES: {
+      html: true,
+    },
+  })
+
   return (
-    <div className="rounded-xl border border-gray-100 overflow-hidden">
-      <div className="bg-cobalt-700 text-white px-3 py-2 text-xs font-black tracking-wide">
-        REGRAS DA MESA
+    <section>
+      <div className="rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-cobalt-700 text-white px-3 py-2 text-xs font-black tracking-wide">
+          REGRAS DA MESA
+        </div>
+
+        <div className="p-3 space-y-3 text-sm"
+          dangerouslySetInnerHTML={{ __html: sanitizedRules }}
+        />
       </div>
-      <div className="p-3 space-y-3 text-sm text-gray-700">
-        <p>
-          Essas regras estão de acordo com o Regulamento do Chápeu Mineiro 2026. Em caso de dúvida,
-          é só consultar!
-        </p>
-
-        <div className="space-y-1">
-          <p>
-            O torneio seguirá as regras oficiais (versão 2026) da WFDF e a proporção
-            será sempre 3:2
-          </p>
-          <p><strong>Linhas Proporção Homem:</strong> 3 homens e 2 mulheres</p>
-        </div>
-
-        <div className="space-y-1 text-xs text-gray-600">
-          <p>
-            *Na ocasião de jogadores não-binários nas equipes, tais atletas podem ser escalades
-            nas linhas de jogo livremente, independente da proporção de gênero.
-          </p>
-          <p>*Em casos extraordinários as equipes podem combinar de alterar esse sistema.</p>
-        </div>
-
-        <div className="space-y-1">
-          <p><strong>O jogo vai até 55 minutos ou quando um dos times fizer 13 pontos.</strong></p>
-          <div className="space-y-1 text-xs text-gray-600">
-            <p>*Em caso de término do tempo regulamentar com o “disco em jogo”, termina-se o ponto.</p>
-            <p>*Em caso de empate, joga-se o gol de ouro.</p>
-          </div>
-        </div>
-
-        <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100">
-          <div className="px-3 py-2">
-            <strong>Meio-tempo:</strong> 25 min ou 7 pontos / 3 min
-          </div>
-          <div className="px-3 py-2">
-            <strong>Time out:</strong> 1 pedido por tempo por time por período / 75 seg
-          </div>
-        </div>
-      </div>
-    </div>
+    </section>
   )
 }
 
@@ -518,6 +496,7 @@ export function Torneios() {
   const [name, setName] = useState('')
   const [endDate, setEndDate] = useState('')
   const [selectedTeams, setSelectedTeams] = useState<Team[]>([])
+  const [rules, setRules] = useState('')
   const [deleteTournament, setDeleteTournament] = useState<Tournament | null>(null)
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null)
   const [expandedStatsTournamentId, setExpandedStatsTournamentId] = useState<string | null>(null)
@@ -603,6 +582,7 @@ export function Torneios() {
     setSelectedTeams([])
     setEditingTournament(null)
     setShowForm(false)
+    setRules('')
   }
 
   const handleEdit = (tournament: Tournament) => {
@@ -612,6 +592,7 @@ export function Torneios() {
     setEndDate(tournament.end_date ?? '')
     setSelectedTeams([])
     setShowForm(true)
+    setRules(tournament.rules)
   }
 
   const handleStatsSort = (sortKey: StatsSortKey) => {
@@ -633,6 +614,7 @@ export function Torneios() {
         name: name.trim(),
         end_date: endDate || null,
         teamIds: selectedTeams.map((t) => t.id),
+        rules,
       }
       if (editingTournament) {
         await updateTournament.mutateAsync({ id: editingTournament.id, ...payload })
@@ -702,6 +684,19 @@ export function Torneios() {
               getLabel={(t) => t.name}
               getValue={(t) => t.id}
               placeholder="Buscar e selecionar times..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Regras da Mesa
+            </label>
+
+            <ReactQuill
+              theme="snow"
+              value={rules}
+              onChange={setRules}
+              className="[&_.ql-editor]:min-h-[15rem]"
             />
           </div>
 
@@ -832,7 +827,7 @@ export function Torneios() {
                   {rulesExpanded ? 'Ocultar regras da mesa' : 'Regras da mesa'}
                 </Button>
 
-                {rulesExpanded && <TableRulesSection />}
+                {rulesExpanded && <TableRulesSection rules={tournament.rules} />}
 
                 {canViewStats && (
                   <Button

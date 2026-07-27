@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Tournament, TournamentTeam, Team, TournamentRosterPlayer } from '../types/database'
 import { applyTeamSnapshotName } from '../lib/teamSnapshots'
+import DOMPurify from 'dompurify'
 
 export interface TournamentTeamLink extends TournamentTeam {
   team: Team
@@ -13,11 +14,19 @@ export function useTournaments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*')
+        .select(`
+          *,
+          tournament_rules(rules)
+        `)
         .is('archived_at', null)
         .order('created_at', { ascending: false })
+
       if (error) throw error
-      return data as Tournament[]
+
+      return data.map(({ tournament_rules, ...tournament }) => ({
+        ...tournament,
+        rules: tournament_rules?.rules ?? '',
+      })) as Tournament[]
     },
   })
 }
@@ -47,29 +56,36 @@ export function useCreateTournament() {
       name,
       end_date,
       teamIds,
+      rules,
     }: {
       name: string
       end_date: string | null
-      teamIds: string[]
+      teamIds: string[],
+      rules: string,
     }) => {
-      // Create tournament
-      const { data: tournament, error: tErr } = await supabase
-        .from('tournaments')
-        .insert({ name, end_date })
-        .select()
-        .single()
-      if (tErr) throw tErr
-
-      // Link teams
-      if (teamIds.length > 0) {
-        const { error: ttErr } = await supabase.from('tournament_teams').insert(
-          teamIds.map((team_id) => ({
-            tournament_id: (tournament as Tournament).id,
-            team_id,
-          }))
-        )
-        if (ttErr) throw ttErr
+      if (!rules?.trim()) {
+        throw new Error('Tournament rules are required');
       }
+
+      const sanitizedRules = DOMPurify.sanitize(rules, {
+        USE_PROFILES: {
+          html: true,
+        },
+      })
+
+      const { data: tournament, error } = await supabase.rpc('create_tournament',
+        {
+          p_name: name.trim(),
+          p_end_date: end_date,
+          p_rules: sanitizedRules,
+          p_team_ids: teamIds,
+        }
+      )
+
+      if (error) {
+        throw error
+      }
+
       return tournament as Tournament
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tournaments'] }),
@@ -84,11 +100,13 @@ export function useUpdateTournament() {
       name,
       end_date,
       teamIds,
+      rules,
     }: {
       id: string
       name: string
       end_date: string | null
-      teamIds: string[]
+      teamIds: string[],
+      rules: string,
     }) => {
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
@@ -97,6 +115,23 @@ export function useUpdateTournament() {
         .select()
         .single()
       if (tErr) throw tErr
+
+      const sanitizedRules = DOMPurify.sanitize(rules, {
+        USE_PROFILES: {
+          html: true,
+        },
+      })
+
+      const { error: rulesError } = await supabase
+        .from('tournament_rules')
+        .update({
+          rules: sanitizedRules,
+          updated_by: (await supabase.auth.getUser()).data.user?.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('tournament_id', id)
+
+      if (rulesError) throw rulesError
 
       const [{ data: currentLinks, error: linksErr }, { data: existingGames, error: gamesErr }] =
         await Promise.all([
