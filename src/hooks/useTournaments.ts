@@ -47,15 +47,17 @@ export function useCreateTournament() {
       name,
       end_date,
       teamIds,
+      organizer_id,
     }: {
       name: string
       end_date: string | null
       teamIds: string[]
+      organizer_id?: string | null
     }) => {
       // Create tournament
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
-        .insert({ name, end_date })
+        .insert({ name, end_date, ...(organizer_id !== undefined ? { organizer_id } : {}) })
         .select()
         .single()
       if (tErr) throw tErr
@@ -84,15 +86,17 @@ export function useUpdateTournament() {
       name,
       end_date,
       teamIds,
+      organizer_id,
     }: {
       id: string
       name: string
       end_date: string | null
       teamIds: string[]
+      organizer_id?: string | null
     }) => {
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
-        .update({ name, end_date })
+        .update({ name, end_date, ...(organizer_id !== undefined ? { organizer_id } : {}) })
         .eq('id', id)
         .select()
         .single()

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { queryClient } from '../lib/queryClient'
-import { canManageRole, getUserRole, isAdminRole, isEditorRole } from '../lib/auth'
+import { canManageRole, getUserRole, isAdminRole, isEditorRole, isOrganizerRole } from '../lib/auth'
 import type { Profile } from '../types/database'
 
 interface AuthState {
@@ -13,6 +13,7 @@ interface AuthState {
   isLoading: boolean
   isEditor: boolean
   isAdmin: boolean
+  isOrganizer: boolean
   canManage: boolean
   role: string | null
   signUp: (fullName: string, email: string, password: string) => Promise<void>
@@ -221,6 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isEditor: isEditorRole(session),
       isAdmin: isAdminRole(session),
+      isOrganizer: isOrganizerRole(session),
       canManage: canManageRole(session),
       role: getUserRole(session),
       signUp,
