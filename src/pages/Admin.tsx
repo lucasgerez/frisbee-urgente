@@ -9,12 +9,14 @@ import { ErrorMessage } from '../components/ui/ErrorMessage'
 const ROLE_OPTIONS = [
   { value: '', label: 'sem role' },
   { value: 'editor', label: 'editor' },
+  { value: 'organizador', label: 'organizador' },
   { value: 'admin', label: 'admin' },
 ]
 
 const roleColor: Record<string, string> = {
   admin: 'text-red-600 font-semibold',
   editor: 'text-emerald-600 font-semibold',
+  organizador: 'text-purple-600 font-semibold',
 }
 
 function UserRow({ user }: { user: AdminUser }) {

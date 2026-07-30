@@ -25,6 +25,14 @@ export function usePlayers(teamId?: string) {
   })
 }
 
+function invalidateRosterQueries(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({
+    predicate: (query) =>
+      query.queryKey[0] === 'tournament-roster-players' ||
+      (query.queryKey[0] === 'tournaments' && query.queryKey.includes('roster')),
+  })
+}
+
 export function useCreatePlayer() {
   const qc = useQueryClient()
   return useMutation({
@@ -37,8 +45,10 @@ export function useCreatePlayer() {
       if (error) throw error
       return data as Player
     },
-    onSuccess: (_data, vars) =>
-      qc.invalidateQueries({ queryKey: ['players', vars.team_id] }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['players', vars.team_id] })
+      invalidateRosterQueries(qc)
+    },
   })
 }
 
@@ -68,8 +78,10 @@ export function useUpdatePlayer() {
       if (error) throw error
       return data as Player
     },
-    onSuccess: (_data, vars) =>
-      qc.invalidateQueries({ queryKey: ['players', vars.team_id] }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['players', vars.team_id] })
+      invalidateRosterQueries(qc)
+    },
   })
 }
 

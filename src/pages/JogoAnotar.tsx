@@ -15,7 +15,8 @@ import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { GameStatusBadge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { isPastDate, scoreColorClass } from '../lib/utils'
+import { scoreColorClass } from '../lib/utils'
+import { canManageTournament } from '../lib/auth'
 import { getPlayerDisplayName } from '../lib/players'
 
 export function JogoAnotar() {
@@ -47,7 +48,7 @@ export function JogoAnotar() {
   const deleteDefense = useDeleteDefense()
   const updateStatus = useUpdateGameStatus()
   const { display: timerDisplay } = useGameTimer(game)
-  const { isLoading: authLoading, session, canManage, isAdmin } = useAuth()
+  const { isLoading: authLoading, session } = useAuth()
 
   useEffect(() => {
     if (!authLoading && !session) {
@@ -58,7 +59,7 @@ export function JogoAnotar() {
   if (authLoading || gameLoading) return <LoadingScreen />
   if (!session) return null
   if (gameError || !game) return <ErrorMessage message="Jogo não encontrado" className="m-4" />
-  if (!canManage || (!isAdmin && isPastDate(game.tournament.end_date))) {
+  if (!canManageTournament(session, game.tournament)) {
     return (
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
         <ErrorMessage message="Sua conta nao tem permissao para anotar ou editar este jogo." />

@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { isPastDate } from '../lib/utils'
+import { canManageTournament } from '../lib/auth'
 import type { GameWithTeams, Tournament, Team } from '../types/database'
 
 export function Jogos() {
@@ -28,6 +29,7 @@ export function Jogos() {
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [teamA, setTeamA] = useState<Team | null>(null)
   const [teamB, setTeamB] = useState<Team | null>(null)
+  const [search, setSearch] = useState('')
 
   const { data: tournaments = [] } = useTournaments()
   const { data: tournamentTeams = [] } = useTournamentTeams(selectedTournament?.id)
@@ -36,7 +38,7 @@ export function Jogos() {
   const createGame = useCreateGame()
   const updateGame = useUpdateGame()
   const deleteGameMutation = useDeleteGame()
-  const { isLoading: authLoading, session, canManage, user, isEditor, isAdmin } = useAuth()
+  const { isLoading: authLoading, session, canManage, user, isOrganizer, isAdmin } = useAuth()
   const { data: spiritScores = [] } = useSpiritScores(spiritGame?.id, !!session && !!spiritGame)
   const { data: matchMvps = [] } = useGameMatchMvps(mvpGame?.id, !!mvpGame)
   const { data: mvpPlayersA = [] } = useTournamentRosterPlayers(mvpGame?.tournament_id, mvpGame?.team_a_id)
@@ -44,10 +46,27 @@ export function Jogos() {
 
   const teamAOptions = tournamentTeams.filter((t) => t.id !== teamB?.id)
   const teamBOptions = tournamentTeams.filter((t) => t.id !== teamA?.id)
-  const availableTournaments = tournaments.filter((t) => !isPastDate(t.end_date))
+  const availableTournaments = tournaments.filter(
+    (t) => !isPastDate(t.end_date) && (!isOrganizer || t.organizer_id === user?.id)
+  )
   const isTournamentSelectionLocked = Boolean(editingGame) || Boolean(selectedTournament && isPastDate(selectedTournament.end_date))
-  const canCreateActionsForGame = (game: GameWithTeams) =>
-    isAdmin || (isEditor && !isPastDate(game.tournament.end_date))
+  const canCreateActionsForGame = (game: GameWithTeams) => canManageTournament(session, game.tournament)
+
+  const filteredGames = games
+    .filter((game) => {
+      const q = search.trim().toLowerCase()
+      if (!q) return true
+      return (
+        game.tournament.name.toLowerCase().includes(q) ||
+        game.team_a.name.toLowerCase().includes(q) ||
+        game.team_b.name.toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => {
+      const dateA = a.started_at ?? a.created_at
+      const dateB = b.started_at ?? b.created_at
+      return dateB.localeCompare(dateA)
+    })
 
   const handleTournamentChange = (t: Tournament | null) => {
     setSelectedTournament(t)
@@ -73,20 +92,27 @@ export function Jogos() {
       return false
     }
 
-    if (!canManage) {
-      setPermissionError('Sua conta nao tem permissao para criar jogos.')
-      return false
+    if (!tournament) {
+      if (!canManage && !isOrganizer) {
+        setPermissionError('Sua conta nao tem permissao para criar jogos.')
+        return false
+      }
+      return true
     }
 
-    if (tournament && !isAdmin && isPastDate(tournament.end_date)) {
-      setPermissionError('Apenas admins podem editar dados de torneios encerrados.')
+    if (!canManageTournament(session, tournament)) {
+      setPermissionError(
+        isPastDate(tournament.end_date)
+          ? 'Apenas admins podem editar dados de torneios encerrados.'
+          : 'Sua conta nao tem permissao para essa acao neste torneio.'
+      )
       return false
     }
 
     return true
   }
 
-  const requireAdmin = () => {
+  const requireManageGame = (game: GameWithTeams | null) => {
     setPermissionError(null)
 
     if (authLoading) return false
@@ -96,8 +122,8 @@ export function Jogos() {
       return false
     }
 
-    if (!isAdmin) {
-      setPermissionError('Sua conta nao tem permissao para editar ou excluir jogos.')
+    if (!game || !canManageTournament(session, game.tournament)) {
+      setPermissionError('Sua conta nao tem permissao para editar ou excluir este jogo.')
       return false
     }
 
@@ -111,7 +137,7 @@ export function Jogos() {
   }
 
   const handleEdit = (game: GameWithTeams) => {
-    if (!requireAdmin()) return
+    if (!requireManageGame(game)) return
     setEditingGame(game)
     setSelectedTournament(game.tournament)
     setTeamA(game.team_a)
@@ -133,7 +159,7 @@ export function Jogos() {
     e.preventDefault()
     if (!selectedTournament || !teamA || !teamB) return
     if (editingGame) {
-      if (!requireAdmin()) return
+      if (!requireManageGame(editingGame)) return
     } else if (!requireCreatePermission(selectedTournament)) {
       return
     }
@@ -245,33 +271,48 @@ export function Jogos() {
       {error && <ErrorMessage message="Erro ao carregar jogos" />}
       {goalsError && <ErrorMessage message="Erro ao carregar placares" />}
 
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Buscar por campeonato ou time..."
+        className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cobalt-600"
+      />
+
       <div className="space-y-3">
         {games.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center text-sm text-gray-400 border border-gray-100">
             Nenhum jogo cadastrado.
           </div>
+        ) : filteredGames.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center text-sm text-gray-400 border border-gray-100">
+            Nenhum jogo encontrado para essa busca.
+          </div>
         ) : (
-          games.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              goalCounts={{
-                teamA: goals.filter(
-                  (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_a_id
-                ).length,
-                teamB: goals.filter(
-                  (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_b_id
-                ).length,
-              }}
-              onSpiritScore={canCreateActionsForGame(game) ? handleSpiritScore : undefined}
-              onMatchMvp={canCreateActionsForGame(game) ? handleMatchMvp : undefined}
-              onEdit={isAdmin ? handleEdit : undefined}
-              onDelete={isAdmin ? (game) => {
-                if (!requireAdmin()) return
-                setDeleteGame(game)
-              } : undefined}
-            />
-          ))
+          filteredGames.map((game) => {
+            const canManageThisGame = canManageTournament(session, game.tournament)
+            return (
+              <GameCard
+                key={game.id}
+                game={game}
+                goalCounts={{
+                  teamA: goals.filter(
+                    (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_a_id
+                  ).length,
+                  teamB: goals.filter(
+                    (goal) => goal.game_id === game.id && goal.scoring_team_id === game.team_b_id
+                  ).length,
+                }}
+                onSpiritScore={canCreateActionsForGame(game) ? handleSpiritScore : undefined}
+                onMatchMvp={canCreateActionsForGame(game) ? handleMatchMvp : undefined}
+                onEdit={canManageThisGame ? handleEdit : undefined}
+                onDelete={canManageThisGame ? (game) => {
+                  if (!requireManageGame(game)) return
+                  setDeleteGame(game)
+                } : undefined}
+              />
+            )
+          })
         )}
       </div>
 
@@ -280,7 +321,7 @@ export function Jogos() {
         onClose={() => setDeleteGame(null)}
         onConfirm={async () => {
           if (!deleteGame) return
-          if (!requireAdmin()) return
+          if (!requireManageGame(deleteGame)) return
           await deleteGameMutation.mutateAsync(deleteGame.id)
           setDeleteGame(null)
         }}

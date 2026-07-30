@@ -12,6 +12,7 @@ import {
   type SpiritScoreGameDetail,
 } from '../hooks/useSpiritScores'
 import { useTournamentMvpStats } from '../hooks/useMatchMvps'
+import { computeTournamentStandings } from '../lib/standings'
 import {
   useTournaments,
   useTournamentTeams,
@@ -20,6 +21,7 @@ import {
   useDeleteTournament,
 } from '../hooks/useTournaments'
 import { MultiSearchableSelect } from '../components/ui/MultiSearchableSelect'
+import { SearchableSelect } from '../components/ui/SearchableSelect'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
@@ -28,6 +30,8 @@ import { GameStatusBadge } from '../components/ui/Badge'
 import { formatDate, formatDateOnly, formatDateTime, isPastDate, scoreColorClass } from '../lib/utils'
 import { getPlayerDisplayName } from '../lib/players'
 import { useAuth } from '../hooks/useAuth'
+import { useAdminUsers } from '../hooks/useAdminUsers'
+import { canCreateTournament, canManageTournament } from '../lib/auth'
 import type { DefenseWithPlayer, Gender, GoalWithPlayers, Team, Tournament } from '../types/database'
 
 interface PlayerTournamentStats {
@@ -462,6 +466,44 @@ function MvpStatsSection({
   )
 }
 
+function StandingsSection({ rows }: { rows: ReturnType<typeof computeTournamentStandings> }) {
+  if (rows.length === 0) {
+    return (
+      <div className="text-sm text-gray-400 text-center py-3">
+        Nenhum jogo finalizado neste torneio ainda.
+      </div>
+    )
+  }
+
+  return (
+    <div className="divide-y divide-gray-100">
+      <div className="grid grid-cols-[1fr_28px_28px_28px_28px_36px] gap-1 px-3 py-2 text-[11px] font-black text-gray-400 uppercase">
+        <span>Time</span>
+        <span className="text-center">J</span>
+        <span className="text-center">V</span>
+        <span className="text-center">E</span>
+        <span className="text-center">D</span>
+        <span className="text-center">SG</span>
+      </div>
+      {rows.map((row) => (
+        <div
+          key={row.teamId}
+          className="grid grid-cols-[1fr_28px_28px_28px_28px_36px] gap-1 px-3 py-2 text-sm items-center"
+        >
+          <span className="font-medium text-gray-900 truncate">{row.teamName}</span>
+          <span className="text-center font-bold text-gray-700">{row.gamesPlayed}</span>
+          <span className="text-center font-bold text-gray-700">{row.wins}</span>
+          <span className="text-center font-bold text-gray-700">{row.draws}</span>
+          <span className="text-center font-bold text-gray-700">{row.losses}</span>
+          <span className="text-center font-bold text-gray-700">
+            {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function TableRulesSection() {
   return (
     <div className="rounded-xl border border-gray-100 overflow-hidden">
@@ -518,11 +560,13 @@ export function Torneios() {
   const [name, setName] = useState('')
   const [endDate, setEndDate] = useState('')
   const [selectedTeams, setSelectedTeams] = useState<Team[]>([])
+  const [organizerId, setOrganizerId] = useState<string | null>(null)
   const [deleteTournament, setDeleteTournament] = useState<Tournament | null>(null)
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null)
   const [expandedStatsTournamentId, setExpandedStatsTournamentId] = useState<string | null>(null)
   const [expandedSpiritStatsTournamentId, setExpandedSpiritStatsTournamentId] = useState<string | null>(null)
   const [expandedMvpStatsTournamentId, setExpandedMvpStatsTournamentId] = useState<string | null>(null)
+  const [expandedStandingsTournamentId, setExpandedStandingsTournamentId] = useState<string | null>(null)
   const [expandedRulesTournamentId, setExpandedRulesTournamentId] = useState<string | null>(null)
   const [statsSortKey, setStatsSortKey] = useState<StatsSortKey>('goals')
   const [statsSortDirection, setStatsSortDirection] = useState<SortDirection>('desc')
@@ -537,7 +581,9 @@ export function Torneios() {
   const createTournament = useCreateTournament()
   const updateTournament = useUpdateTournament()
   const deleteTournamentMutation = useDeleteTournament()
-  const { isLoading: authLoading, session, canManage, isEditor, isAdmin } = useAuth()
+  const { isLoading: authLoading, session, isAdmin } = useAuth()
+  const { data: adminUsers = [] } = useAdminUsers({ enabled: isAdmin })
+  const organizerUsers = adminUsers.filter((u) => u.role === 'organizador')
   const {
     data: spiritScores = [],
     isLoading: spiritScoresLoading,
@@ -549,10 +595,9 @@ export function Torneios() {
     isLoading: matchMvpsLoading,
     error: matchMvpsError,
   } = useTournamentMvpStats()
-  const canEditTournament = (tournament: Tournament) =>
-    isAdmin || (isEditor && !isPastDate(tournament.end_date))
+  const canEditTournament = (tournament: Tournament) => canManageTournament(session, tournament)
 
-  const requireEditor = (tournament?: Tournament | null) => {
+  const requireManageTournament = (tournament?: Tournament | null) => {
     setPermissionError(null)
 
     if (authLoading) return false
@@ -562,13 +607,20 @@ export function Torneios() {
       return false
     }
 
-    if (!canManage) {
-      setPermissionError('Sua conta nao tem permissao para criar ou editar torneios.')
-      return false
+    if (!tournament) {
+      if (!canCreateTournament(session)) {
+        setPermissionError('Sua conta nao tem permissao para criar torneios.')
+        return false
+      }
+      return true
     }
 
-    if (tournament && !isAdmin && isPastDate(tournament.end_date)) {
-      setPermissionError('Apenas admins podem editar dados de torneios encerrados.')
+    if (!canManageTournament(session, tournament)) {
+      setPermissionError(
+        isPastDate(tournament.end_date)
+          ? 'Apenas admins podem editar dados de torneios encerrados.'
+          : 'Sua conta nao tem permissao para editar este torneio.'
+      )
       return false
     }
 
@@ -601,16 +653,18 @@ export function Torneios() {
     setName('')
     setEndDate('')
     setSelectedTeams([])
+    setOrganizerId(null)
     setEditingTournament(null)
     setShowForm(false)
   }
 
   const handleEdit = (tournament: Tournament) => {
-    if (!requireEditor(tournament)) return
+    if (!requireManageTournament(tournament)) return
     setEditingTournament(tournament)
     setName(tournament.name)
     setEndDate(tournament.end_date ?? '')
     setSelectedTeams([])
+    setOrganizerId(tournament.organizer_id)
     setShowForm(true)
   }
 
@@ -627,12 +681,13 @@ export function Torneios() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    if (!requireEditor(editingTournament)) return
+    if (!requireManageTournament(editingTournament)) return
     try {
       const payload = {
         name: name.trim(),
         end_date: endDate || null,
         teamIds: selectedTeams.map((t) => t.id),
+        ...(isAdmin ? { organizer_id: organizerId } : {}),
       }
       if (editingTournament) {
         await updateTournament.mutateAsync({ id: editingTournament.id, ...payload })
@@ -705,6 +760,23 @@ export function Torneios() {
             />
           </div>
 
+          {isAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Organizador{' '}
+                <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <SearchableSelect
+                options={organizerUsers}
+                value={organizerUsers.find((u) => u.id === organizerId) ?? null}
+                onChange={(u) => setOrganizerId(u?.id ?? null)}
+                getLabel={(u) => u.full_name ?? u.email ?? u.id}
+                getValue={(u) => u.id}
+                placeholder="Selecionar organizador..."
+              />
+            </div>
+          )}
+
           {createTournament.isError && (
             <ErrorMessage message={(createTournament.error as Error).message} />
           )}
@@ -727,7 +799,7 @@ export function Torneios() {
         </form>
       ) : (
         <Button onClick={() => {
-          if (!requireEditor()) return
+          if (!requireManageTournament()) return
           resetForm()
           setShowForm(true)
         }} className="w-full" size="lg" loading={authLoading}>
@@ -751,12 +823,14 @@ export function Torneios() {
             const statsExpanded = expandedStatsTournamentId === tournament.id
             const spiritStatsExpanded = expandedSpiritStatsTournamentId === tournament.id
             const mvpStatsExpanded = expandedMvpStatsTournamentId === tournament.id
+            const standingsExpanded = expandedStandingsTournamentId === tournament.id
             const rulesExpanded = expandedRulesTournamentId === tournament.id
             const canViewStats = isAdmin || isPastDate(tournament.end_date)
             const statsLoading = gamesLoading || goalsLoading || defensesLoading
             const statsError = gamesError || goalsError || defensesError
             const spiritStats = computeSpiritTournamentStats(tournament.id, spiritScores)
             const mvpStats = computeMvpTournamentStats(tournament.id, matchMvps)
+            const standingsRows = computeTournamentStandings(tournamentGames, goals)
 
             return (
               <div
@@ -870,6 +944,18 @@ export function Torneios() {
                   </Button>
                 )}
 
+                {canViewStats && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setExpandedStandingsTournamentId(standingsExpanded ? null : tournament.id)}
+                    className="w-full"
+                  >
+                    {standingsExpanded ? 'Ocultar classificação' : 'Ver classificação'}
+                  </Button>
+                )}
+
                 {canViewStats && statsExpanded && (
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
                     <div className="bg-gray-900 text-white px-3 py-2 text-xs font-black tracking-wide">
@@ -960,6 +1046,25 @@ export function Torneios() {
                         <MvpStatsSection gender="Masculino" stats={mvpStats} />
                         <MvpStatsSection gender="Feminino" stats={mvpStats} />
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {canViewStats && standingsExpanded && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="bg-gray-900 text-white px-3 py-2 text-xs font-black tracking-wide">
+                      CLASSIFICAÇÃO
+                    </div>
+                    {gamesLoading || goalsLoading ? (
+                      <div className="text-sm text-gray-400 text-center py-3">
+                        Carregando classificação...
+                      </div>
+                    ) : gamesError || goalsError ? (
+                      <div className="p-3">
+                        <ErrorMessage message="Erro ao carregar classificação do campeonato" />
+                      </div>
+                    ) : (
+                      <StandingsSection rows={standingsRows} />
                     )}
                   </div>
                 )}

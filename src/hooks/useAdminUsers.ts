@@ -9,7 +9,7 @@ export interface AdminUser {
   created_at: string
 }
 
-export function useAdminUsers() {
+export function useAdminUsers(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
@@ -17,6 +17,7 @@ export function useAdminUsers() {
       if (error) throw error
       return data.users as AdminUser[]
     },
+    enabled: options?.enabled ?? true,
   })
 }
 
