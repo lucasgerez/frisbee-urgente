@@ -22,9 +22,10 @@ export function Times() {
   const { data: players = [], isLoading: playersLoading } = usePlayers(selectedTeam?.id)
   const createTeam = useCreateTeam()
   const createPlayer = useCreatePlayer()
-  const { isLoading: authLoading, session, isAdmin } = useAuth()
+  const { isLoading: authLoading, session, isAdmin, isOrganizer } = useAuth()
+  const canWriteTeams = isAdmin || isOrganizer
 
-  const requireAdmin = () => {
+  const requireWriteAccess = () => {
     setPermissionError(null)
 
     if (authLoading) return false
@@ -34,7 +35,7 @@ export function Times() {
       return false
     }
 
-    if (!isAdmin) {
+    if (!canWriteTeams) {
       setPermissionError('Sua conta nao tem permissao para criar ou editar times e jogadores.')
       return false
     }
@@ -45,7 +46,7 @@ export function Times() {
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTeamName.trim()) return
-    if (!requireAdmin()) return
+    if (!requireWriteAccess()) return
     try {
       const team = await createTeam.mutateAsync(newTeamName.trim())
       setNewTeamName('')
@@ -64,7 +65,7 @@ export function Times() {
       {permissionError && <ErrorMessage message={permissionError} />}
 
       {/* Create team */}
-      {isAdmin && showNewTeam ? (
+      {canWriteTeams && showNewTeam ? (
         <form onSubmit={handleCreateTeam} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
           <h2 className="font-bold text-gray-800">Novo time</h2>
           <input
@@ -87,10 +88,10 @@ export function Times() {
             </Button>
           </div>
         </form>
-      ) : isAdmin ? (
+      ) : canWriteTeams ? (
         <Button
           onClick={() => {
-            if (!requireAdmin()) return
+            if (!requireWriteAccess()) return
             setShowNewTeam(true)
           }}
           className="w-full"
@@ -131,20 +132,20 @@ export function Times() {
               <PlayerList
                 players={players}
                 teamId={selectedTeam.id}
-                canEdit={!!session && isAdmin}
+                canEdit={!!session && canWriteTeams}
                 onUnauthorized={() => {
-                  requireAdmin()
+                  requireWriteAccess()
                 }}
               />
             )}
 
-            {isAdmin && (
+            {canWriteTeams && (
             <div className="border-t border-gray-100 pt-3">
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Adicionar jogador</h3>
               <PlayerForm
                 teamId={selectedTeam.id}
                 onSubmit={async (data) => {
-                  if (!requireAdmin()) return
+                  if (!requireWriteAccess()) return
                   await createPlayer.mutateAsync(data)
                 }}
               />
