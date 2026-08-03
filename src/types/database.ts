@@ -30,6 +30,7 @@ export interface Tournament {
   organizer_id: string | null
   archived_at: string | null
   created_at: string
+  rules: string
 }
 
 export interface TournamentTeam {
