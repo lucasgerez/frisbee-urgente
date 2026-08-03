@@ -125,6 +125,13 @@ export interface MatchMvp {
   updated_at: string
 }
 
+export interface TournamentCoOrganizer {
+  tournament_id: string
+  user_id: string
+  added_by: string | null
+  created_at: string
+}
+
 // ─── Joined / UI shapes ───────────────────────────────────────────────────────
 
 export interface GameWithTeams extends Game {
