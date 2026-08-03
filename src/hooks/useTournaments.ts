@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Tournament, TournamentTeam, Team, TournamentRosterPlayer } from '../types/database'
 import { applyTeamSnapshotName } from '../lib/teamSnapshots'
+import DOMPurify from 'dompurify'
 
 export interface TournamentTeamLink extends TournamentTeam {
   team: Team
@@ -13,11 +14,19 @@ export function useTournaments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*')
+        .select(`
+          *,
+          tournament_rules(rules)
+        `)
         .is('archived_at', null)
         .order('created_at', { ascending: false })
+
       if (error) throw error
-      return data as Tournament[]
+
+      return data.map(({ tournament_rules, ...tournament }) => ({
+        ...tournament,
+        rules: (tournament_rules as { rules: string } | null)?.rules ?? '',
+      })) as Tournament[]
     },
   })
 }
@@ -48,13 +57,14 @@ export function useCreateTournament() {
       end_date,
       teamIds,
       organizer_id,
+      rules,
     }: {
       name: string
       end_date: string | null
       teamIds: string[]
       organizer_id?: string | null
+      rules?: string
     }) => {
-      // Create tournament
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
         .insert({ name, end_date, ...(organizer_id !== undefined ? { organizer_id } : {}) })
@@ -62,7 +72,17 @@ export function useCreateTournament() {
         .single()
       if (tErr) throw tErr
 
-      // Link teams
+      const userId = (await supabase.auth.getUser()).data.user?.id!
+      const sanitizedRules = DOMPurify.sanitize(rules ?? '', { USE_PROFILES: { html: true } })
+
+      const { error: rulesErr } = await supabase.from('tournament_rules').insert({
+        tournament_id: (tournament as Tournament).id,
+        rules: sanitizedRules,
+        created_by: userId,
+        updated_by: userId,
+      })
+      if (rulesErr) throw rulesErr
+
       if (teamIds.length > 0) {
         const { error: ttErr } = await supabase.from('tournament_teams').insert(
           teamIds.map((team_id) => ({
@@ -72,7 +92,7 @@ export function useCreateTournament() {
         )
         if (ttErr) throw ttErr
       }
-      return tournament as Tournament
+      return { ...tournament, rules: sanitizedRules } as Tournament
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tournaments'] }),
   })
@@ -87,12 +107,14 @@ export function useUpdateTournament() {
       end_date,
       teamIds,
       organizer_id,
+      rules,
     }: {
       id: string
       name: string
       end_date: string | null
       teamIds: string[]
       organizer_id?: string | null
+      rules?: string
     }) => {
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
@@ -101,6 +123,18 @@ export function useUpdateTournament() {
         .select()
         .single()
       if (tErr) throw tErr
+
+      const userId = (await supabase.auth.getUser()).data.user?.id!
+      const sanitizedRules = DOMPurify.sanitize(rules ?? '', { USE_PROFILES: { html: true } })
+
+      const { error: rulesErr } = await supabase.from('tournament_rules').upsert({
+        tournament_id: id,
+        rules: sanitizedRules,
+        created_by: userId,
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'tournament_id' })
+      if (rulesErr) throw rulesErr
 
       const [{ data: currentLinks, error: linksErr }, { data: existingGames, error: gamesErr }] =
         await Promise.all([
