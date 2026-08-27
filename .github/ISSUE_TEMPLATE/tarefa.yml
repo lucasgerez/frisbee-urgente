@@ -1,0 +1,26 @@
+name: Tarefa
+description: Uma tarefa ou próximo passo para o time
+title: "[Tarefa] "
+labels: ["tarefa"]
+body:
+  - type: textarea
+    id: descricao
+    attributes:
+      label: O que precisa ser feito
+      description: Descreva a tarefa de forma objetiva
+    validations:
+      required: true
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto / motivação
+      description: Por que essa tarefa é necessária agora
+    validations:
+      required: false
+  - type: checkboxes
+    id: criterios
+    attributes:
+      label: Critérios de conclusão
+      options:
+        - label: Critério 1
+        - label: Critério 2
