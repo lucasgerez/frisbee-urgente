@@ -240,7 +240,7 @@ export function Admin() {
   )
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
+    <div className="space-y-5">
       <h1 className="text-2xl font-black text-gray-900">Admin</h1>
 
       {/* Tab switcher */}

@@ -1,0 +1,19 @@
+{
+  "home": {
+    "active_tournaments": "Torneos Activos",
+    "create_game": "¡Crea tu primer partido!",
+    "description": "Sigue el rendimiento de los equipos, la clasificación por fases, las métricas por género (M/F) y las actas de los partidos en vivo.",
+    "games_played": "Partidos Jugados",
+    "no_games": "No se encontraron partidos",
+    "recent_games": "Juegos Recientes",
+    "registered_teams": "Equipos Registrados",
+    "see_all_games": "Ver Todos",
+    "title": "Estadísticas y Gestión de Partidos"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "games": "Partidos",
+    "teams": "Equipos",
+    "tournaments": "Torneos"
+  }
+}

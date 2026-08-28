@@ -24,13 +24,26 @@ export function Header() {
             (e.target as HTMLImageElement).style.display = 'none'
           }}
         />
-        <div>
-          <div className="text-gold-400 font-black text-base leading-tight tracking-wide">
-            FRISBEE URGENTE
+        <div className="flex items-center gap-3 cursor-pointer group">
+          <div
+            className="bg-amber-500 text-slate-950 p-2 rounded-xl font-black text-xl leading-none shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
+            🥏
           </div>
-          <div className="text-gray-400 text-xs leading-tight">em Dados</div>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-black text-lg tracking-wider text-white">
+                FRISBEE <span className="text-amber-400">URGENTE</span>
+              </h1>
+            </div>
+            <div className="text-gray-400 text-xs leading-tight">
+              Ultimate Frisbee Analytics
+            </div>
+          </div>
         </div>
       </Link>
+
+      <Navigation/>
 
       {user ? (
         <div className="flex items-center gap-2">
@@ -89,5 +102,48 @@ export function Header() {
         </Link>
       )}
     </header>
+  )
+}
+
+import { NavLink } from 'react-router-dom'
+import {useTranslation} from "react-i18next";
+
+export function Navigation() {
+  const { t } = useTranslation()
+
+  const navClass = ({ isActive }: { isActive: boolean }) =>
+    `px-4 py-1.5 text-xs rounded-lg transition ${
+      isActive
+        ? 'font-bold bg-amber-500 text-slate-950 shadow-md'
+        : 'font-semibold text-slate-400 hover:text-white'
+    }`
+
+  const tabs = [
+    {
+      to: '/',
+      label: t('navigation.home'),
+    },
+    {
+      to: '/times',
+      label: t('navigation.teams'),
+    },
+    {
+      to: '/torneios',
+      label: t('navigation.tournaments'),
+    },
+    {
+      to: '/jogos',
+      label: t('navigation.games'),
+    },
+  ]
+
+  return (
+    <nav className="hidden md:flex items-center gap-1 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800">
+      {
+        tabs.map(({ to, label }, index) => (
+          <NavLink to={to} key={index} className={navClass}>{label}</NavLink>
+        ))
+      }
+    </nav>
   )
 }

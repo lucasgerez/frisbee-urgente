@@ -4,6 +4,9 @@ import { useGameGoals } from '../hooks/useGoals'
 import { GameCard } from '../components/games/GameCard'
 import { LoadingScreen } from '../components/ui/Spinner'
 import type { GameWithTeams } from '../types/database'
+import { useTranslation } from "react-i18next";
+import { LightningIcon, TrophyIcon, UsersThreeIcon} from "@phosphor-icons/react";
+import {useDashboard} from "../hooks/useDashboard.ts";
 
 function RecentGameCard({ game }: { game: GameWithTeams }) {
   const { data: goals = [] } = useGameGoals(game.id)
@@ -18,92 +21,127 @@ function RecentGameCard({ game }: { game: GameWithTeams }) {
   )
 }
 
-export function Home() {
-  const { data: games = [], isLoading } = useGames()
+function DashboardStatSkeleton() {
+  return (
+    <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4 shadow-sm">
+      <div className="size-14 rounded-xl bg-slate-200 animate-pulse" />
 
-  const activeGames = games.filter(
-    (g) => g.status === 'in_progress' || g.status === 'paused'
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-24 rounded bg-slate-200 animate-pulse" />
+        <div className="h-6 w-12 rounded bg-slate-200 animate-pulse" />
+      </div>
+    </div>
   )
-  const recentGames = games.slice(0, 5)
+}
+
+function Dashboard() {
+  const { t } = useTranslation()
+
+  const {
+    data: dashboard = {
+      gamesCount: 0,
+      teamsCount: 0,
+      tournamentsCount: 0,
+    },
+    isLoading,
+  } = useDashboard()
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <DashboardStatSkeleton />
+        <DashboardStatSkeleton />
+        <DashboardStatSkeleton />
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-5 space-y-6">
-      {/* Hero */}
-      <div className="bg-gray-900 rounded-2xl p-5 text-white flex items-center gap-4">
-        <img
-          src="/mascot.png"
-          alt="Frisbee Urgente"
-          className="h-16 w-16 rounded-full object-cover border-2 border-gold-400 shrink-0"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-        />
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4 shadow-sm">
+        <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+          <TrophyIcon className="size-8" />
+        </div>
         <div>
-          <div className="text-gold-400 font-black text-xl leading-tight">
-            FRISBEE URGENTE
-          </div>
-          <div className="text-gray-300 text-sm mt-0.5">em Dados</div>
-          <div className="text-gray-400 text-xs mt-1">
-            Acompanhe as estatísticas em tempo real
-          </div>
+          <p className="text-xs text-slate-500 font-medium">
+            {t('home.active_tournaments')}
+          </p>
+          <p className="text-xl font-black text-slate-900">{ dashboard.tournamentsCount }</p></div>
+      </div>
+
+      <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4 shadow-sm">
+        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+          <UsersThreeIcon className="size-8" />
+          <i className="ph ph-users-three text-2xl"></i>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500 font-medium">
+            {t('home.registered_teams')}
+          </p>
+          <p className="text-xl font-black text-slate-900">
+            { dashboard.teamsCount }
+          </p>
         </div>
       </div>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link to="/jogos" className="bg-cobalt-600 text-white rounded-2xl p-4 hover:bg-cobalt-700 transition-colors">
-          <div className="text-2xl mb-1">⚡</div>
-          <div className="font-bold text-sm">Ver Jogos</div>
-          <div className="text-cobalt-200 text-xs mt-0.5">Criar e acompanhar</div>
-        </Link>
-        <Link to="/torneios" className="bg-gold-400 text-gray-900 rounded-2xl p-4 hover:bg-gold-500 transition-colors">
-          <div className="text-2xl mb-1">🏆</div>
-          <div className="font-bold text-sm">Torneios</div>
-          <div className="text-gold-700 text-xs mt-0.5">Gerenciar torneios</div>
-        </Link>
-        <Link to="/times" className="bg-white border border-gray-200 text-gray-800 rounded-2xl p-4 hover:border-gray-300 transition-colors">
-          <div className="text-2xl mb-1">👥</div>
-          <div className="font-bold text-sm">Times</div>
-          <div className="text-gray-400 text-xs mt-0.5">Jogadores e naipes</div>
-        </Link>
-        {activeGames.length > 0 ? (
-          <Link to={`/jogos/${activeGames[0].id}/anotar`}
-            className="bg-green-500 text-white rounded-2xl p-4 hover:bg-green-600 transition-colors">
-            <div className="text-2xl mb-1">✏️</div>
-            <div className="font-bold text-sm">Anotar</div>
-            <div className="text-green-100 text-xs mt-0.5 truncate">
-              {activeGames[0].team_a.name} × {activeGames[0].team_b.name}
-            </div>
-          </Link>
-        ) : (
-          <Link to="/jogos" className="bg-white border border-gray-200 text-gray-800 rounded-2xl p-4 hover:border-gray-300 transition-colors">
-            <div className="text-2xl mb-1">✏️</div>
-            <div className="font-bold text-sm">Anotar</div>
-            <div className="text-gray-400 text-xs mt-0.5">Iniciar um jogo</div>
-          </Link>
-        )}
+      <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4 shadow-sm">
+        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+          <LightningIcon className="size-8" />
+        </div>
+        <div>
+          <p className="text-xs text-slate-500 font-medium">
+            {t('home.games_played')}
+          </p>
+          <p className="text-xl font-black text-slate-900">
+            { dashboard.gamesCount }
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function Home() {
+  const { t } = useTranslation()
+
+  const { data: games = [], isLoading } = useGames()
+
+  const recentGames = games.slice(0, 5)
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gray-900 rounded-2xl p-5 text-white gap-4 space-y-2">
+        <h2 className="text-2xl md:text-3xl font-black text-gold-400">
+          {t('home.title')}
+        </h2>
+        <p className="text-slate-300 text-sm">
+          {t('home.description')}
+        </p>
       </div>
 
-      {/* Recent games */}
+      <Dashboard />
+
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-gray-800">Jogos recentes</h2>
+          <h2 className="font-bold text-gray-800">{t('home.recent_games')}</h2>
           <Link to="/jogos" className="text-cobalt-600 text-sm font-medium">
-            Ver todos
+            {t('home.see_all_games')}
           </Link>
         </div>
 
         {isLoading ? (
-          <LoadingScreen />
+          <LoadingScreen/>
         ) : recentGames.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center text-sm text-gray-400 border border-gray-100">
-            Nenhum jogo ainda.{' '}
+            {t('home.no_games')}{' '}
             <Link to="/jogos" className="text-cobalt-600 font-medium">
-              Criar o primeiro!
+              {t('home.create_game')}
             </Link>
           </div>
         ) : (
           <div className="space-y-3">
             {recentGames.map((game) => (
-              <RecentGameCard key={game.id} game={game} />
+              <RecentGameCard key={game.id} game={game}/>
             ))}
           </div>
         )}

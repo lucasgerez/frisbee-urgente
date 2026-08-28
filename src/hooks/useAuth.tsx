@@ -41,7 +41,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null)
     setIsLoading(false)
     if (clearCache) {
-      queryClient.clear()
+      const publicQueryKeys = [
+        'dashboard',
+        'games',
+        'teams',
+        'tournaments',
+      ]
+
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0]
+
+          return typeof key === 'string' && !publicQueryKeys.includes(key)
+        },
+      })
     }
   }
 
