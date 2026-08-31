@@ -1,0 +1,19 @@
+{
+  "home": {
+    "active_tournaments": "Active Tournaments",
+    "create_game": "Create first game!",
+    "description": "Track team performance, phase rankings, gender-based metrics (M/F), and live match reports.",
+    "games_played": "Games Played",
+    "no_games": "No games found",
+    "recent_games": "Recent Games",
+    "registered_teams": "Registered Teams",
+    "see_all_games": "See All",
+    "title": "Statistics & Match Management"
+  },
+  "navigation": {
+    "games": "Games",
+    "home": "Home",
+    "teams": "Teams",
+    "tournaments": "Tournaments"
+  }
+}
