@@ -50,9 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       queryClient.removeQueries({
         predicate: (query) => {
-          const key = query.queryKey[0]
+          const key = query.queryKey
+          const isPublicListQuery =
+            key.length === 1 && typeof key[0] === 'string' && publicQueryKeys.includes(key[0])
 
-          return typeof key === 'string' && !publicQueryKeys.includes(key)
+          return !isPublicListQuery
         },
       })
     }

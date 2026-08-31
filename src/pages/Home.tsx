@@ -109,7 +109,7 @@ export function Home() {
   const recentGames = games.slice(0, 5)
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 py-5 space-y-6">
       <div className="bg-gray-900 rounded-2xl p-5 text-white gap-4 space-y-2">
         <h2 className="text-2xl md:text-3xl font-black text-gold-400">
           {t('home.title')}
