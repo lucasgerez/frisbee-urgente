@@ -19,6 +19,7 @@ import {
   useCreateTournament,
   useUpdateTournament,
   useDeleteTournament,
+  useCloseTournament,
 } from '../hooks/useTournaments'
 import { MultiSearchableSelect } from '../components/ui/MultiSearchableSelect'
 import { SearchableSelect } from '../components/ui/SearchableSelect'
@@ -26,12 +27,12 @@ import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
-import { GameStatusBadge } from '../components/ui/Badge'
+import { Badge, GameStatusBadge } from '../components/ui/Badge'
 import { formatDate, formatDateOnly, formatDateTime, isPastDate, scoreColorClass } from '../lib/utils'
 import { getPlayerDisplayName } from '../lib/players'
 import { useAuth } from '../hooks/useAuth'
 import { useAdminUsers } from '../hooks/useAdminUsers'
-import { canCreateTournament, canManageTournament } from '../lib/auth'
+import { canCreateTournament, canManageTournament, canCloseTournament } from '../lib/auth'
 import type { DefenseWithPlayer, Gender, GoalWithPlayers, Team, Tournament } from '../types/database'
 import ReactQuill from 'react-quill-new'
 import 'react-quill-new/dist/quill.snow.css'
@@ -541,6 +542,7 @@ export function Torneios() {
   const [selectedTeams, setSelectedTeams] = useState<Team[]>([])
   const [organizerId, setOrganizerId] = useState<string | null>(null)
   const [deleteTournament, setDeleteTournament] = useState<Tournament | null>(null)
+  const [closeTournament, setCloseTournament] = useState<Tournament | null>(null)
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null)
   const [expandedStatsTournamentId, setExpandedStatsTournamentId] = useState<string | null>(null)
   const [expandedSpiritStatsTournamentId, setExpandedSpiritStatsTournamentId] = useState<string | null>(null)
@@ -560,6 +562,7 @@ export function Torneios() {
   const createTournament = useCreateTournament()
   const updateTournament = useUpdateTournament()
   const deleteTournamentMutation = useDeleteTournament()
+  const closeTournamentMutation = useCloseTournament()
   const { isLoading: authLoading, session, isAdmin } = useAuth()
   const { data: adminUsers = [] } = useAdminUsers({ enabled: isAdmin })
   const organizerUsers = adminUsers.filter((u) => u.role === 'organizador')
@@ -596,10 +599,28 @@ export function Torneios() {
 
     if (!canManageTournament(session, tournament)) {
       setPermissionError(
-        isPastDate(tournament.end_date)
+        tournament.status === 'completed' || isPastDate(tournament.end_date)
           ? 'Apenas admins podem editar dados de torneios encerrados.'
           : 'Sua conta nao tem permissao para editar este torneio.'
       )
+      return false
+    }
+
+    return true
+  }
+
+  const requireCloseTournament = (tournament: Tournament) => {
+    setPermissionError(null)
+
+    if (authLoading) return false
+
+    if (!session) {
+      navigate(`/login?redirectTo=${encodeURIComponent('/torneios')}`)
+      return false
+    }
+
+    if (!canCloseTournament(session, tournament)) {
+      setPermissionError('Sua conta nao tem permissao para encerrar este torneio.')
       return false
     }
 
@@ -834,7 +855,12 @@ export function Torneios() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="font-bold text-gray-900">{tournament.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-bold text-gray-900">{tournament.name}</div>
+                      {tournament.status === 'completed' && (
+                        <Badge className="bg-gray-200 text-gray-600">Encerrado</Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-400 mt-0.5">
                       Criado em {formatDate(tournament.created_at)}
                     </div>
@@ -880,6 +906,21 @@ export function Torneios() {
                     </div>
                   )}
                 </div>
+
+                {tournament.status !== 'completed' && canCloseTournament(session, tournament) && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (!requireCloseTournament(tournament)) return
+                      setCloseTournament(tournament)
+                    }}
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    Encerrar torneio
+                  </Button>
+                )}
 
                 <Button
                   type="button"
@@ -1145,6 +1186,24 @@ export function Torneios() {
         message={`Tem certeza que deseja excluir "${deleteTournament?.name}"? Todos os jogos vinculados serão removidos.`}
         loading={deleteTournamentMutation.isPending}
       />
+
+      <ConfirmDialog
+        open={!!closeTournament}
+        onClose={() => setCloseTournament(null)}
+        onConfirm={async () => {
+          if (!closeTournament) return
+          if (!requireCloseTournament(closeTournament)) return
+          await closeTournamentMutation.mutateAsync(closeTournament.id)
+          setCloseTournament(null)
+        }}
+        title="Encerrar torneio"
+        message={`Tem certeza que deseja encerrar "${closeTournament?.name}"? Esta ação trava os placares e as edições de jogos deste torneio.`}
+        confirmLabel="Encerrar"
+        loading={closeTournamentMutation.isPending}
+      />
+      {closeTournamentMutation.isError && (
+        <ErrorMessage message={(closeTournamentMutation.error as Error).message} />
+      )}
     </div>
   )
 }

@@ -239,6 +239,23 @@ export function useDeleteTournament() {
   })
 }
 
+export function useCloseTournament() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ status: 'completed' })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tournaments'] })
+      qc.invalidateQueries({ queryKey: ['games'] })
+    },
+  })
+}
+
 export function useTournamentRosterPlayers(tournamentId?: string, teamId?: string) {
   return useQuery({
     queryKey: ['tournaments', tournamentId, 'teams', teamId, 'roster'],

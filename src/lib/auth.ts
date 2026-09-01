@@ -30,7 +30,12 @@ export function canCreateTournament(session: Session | null): boolean {
 
 export function canManageTournament(session: Session | null, tournament: Tournament): boolean {
   if (isAdminRole(session)) return true
-  if (isPastDate(tournament.end_date)) return false
+  if (tournament.status === 'completed' || isPastDate(tournament.end_date)) return false
   if (isEditorRole(session)) return true
+  return isOrganizerRole(session) && tournament.organizer_id === (session?.user.id ?? null)
+}
+
+export function canCloseTournament(session: Session | null, tournament: Tournament): boolean {
+  if (isAdminRole(session)) return true
   return isOrganizerRole(session) && tournament.organizer_id === (session?.user.id ?? null)
 }
