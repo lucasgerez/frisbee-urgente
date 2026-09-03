@@ -16,23 +16,15 @@ export function Header() {
   return (
     <header className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg sticky top-0 z-40">
       <Link to="/" className="flex items-center gap-3">
-        <img
-          src="/mascot.png"
-          alt="Frisbee Urgente mascote"
-          className="h-10 w-10 rounded-full object-cover border-2 border-gold-400"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none'
-          }}
-        />
         <div className="flex items-center gap-3 cursor-pointer group">
           <div
-            className="bg-amber-500 text-slate-950 p-2 rounded-xl font-black text-xl leading-none shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
+            className="bg-amber-500 text-slate-950 p-2 rounded-xl font-black text-xl leading-none shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform max-[400px]:hidden">
             🥏
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-black text-lg tracking-wider text-white">
+              <h1 className="font-black text-lg max-sm:text-sm leading-tight text-white">
                 FRISBEE <span className="text-amber-400">URGENTE</span>
               </h1>
             </div>
