@@ -63,7 +63,7 @@ function Dashboard() {
           <TrophyIcon className="size-8" />
         </div>
         <div>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium max-[400px]:hidden">
             {t('home.active_tournaments')}
           </p>
           <p className="text-xl font-black text-slate-900">{ dashboard.tournamentsCount }</p></div>
@@ -75,7 +75,7 @@ function Dashboard() {
           <i className="ph ph-users-three text-2xl"></i>
         </div>
         <div>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium max-[400px]:hidden">
             {t('home.registered_teams')}
           </p>
           <p className="text-xl font-black text-slate-900">
@@ -89,7 +89,7 @@ function Dashboard() {
           <LightningIcon className="size-8" />
         </div>
         <div>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium max-[400px]:hidden">
             {t('home.games_played')}
           </p>
           <p className="text-xl font-black text-slate-900">
