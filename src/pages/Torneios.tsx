@@ -32,7 +32,13 @@ import { formatDate, formatDateOnly, formatDateTime, isPastDate, scoreColorClass
 import { getPlayerDisplayName } from '../lib/players'
 import { useAuth } from '../hooks/useAuth'
 import { useAdminUsers } from '../hooks/useAdminUsers'
-import { canCreateTournament, canManageTournament, canCloseTournament } from '../lib/auth'
+import {
+  useTournamentCoOrganizers,
+  useAddCoOrganizer,
+  useRemoveCoOrganizer,
+  filterOrganizerUsers,
+} from '../hooks/useTournamentCoOrganizers'
+import { canCreateTournament, canManageTournament, canCloseTournament, canManageTournamentTeam } from '../lib/auth'
 import type { DefenseWithPlayer, Gender, GoalWithPlayers, Team, Tournament } from '../types/database'
 import ReactQuill from 'react-quill-new'
 import 'react-quill-new/dist/quill.snow.css'
@@ -532,6 +538,107 @@ function TableRulesSection({ rules }: { rules: string }) {
   )
 }
 
+function OrganizerTeamSection({ tournament }: { tournament: Tournament }) {
+  const { data: coOrganizers = [], isLoading, error } = useTournamentCoOrganizers(tournament.id)
+  const { data: candidateUsers = [] } = useAdminUsers()
+  const addCoOrganizer = useAddCoOrganizer()
+  const removeCoOrganizer = useRemoveCoOrganizer()
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const usersById = new Map(candidateUsers.map((u) => [u.id, u]))
+  const getUserLabel = (userId: string) =>
+    usersById.get(userId)?.full_name ?? usersById.get(userId)?.email ?? userId.slice(0, 8)
+  const primaryOrganizerLabel = tournament.organizer_id
+    ? getUserLabel(tournament.organizer_id)
+    : null
+
+  const existingUserIds = new Set(coOrganizers.map((co) => co.user_id))
+  if (tournament.organizer_id) existingUserIds.add(tournament.organizer_id)
+  const available = filterOrganizerUsers(candidateUsers).filter((u) => !existingUserIds.has(u.id))
+
+  const handleAdd = async (user: { id: string } | null) => {
+    if (!user) return
+    setActionError(null)
+    try {
+      await addCoOrganizer.mutateAsync({ tournamentId: tournament.id, userId: user.id })
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Erro ao adicionar organizador')
+    }
+  }
+
+  const handleRemove = async (userId: string) => {
+    setActionError(null)
+    try {
+      await removeCoOrganizer.mutateAsync({ tournamentId: tournament.id, userId })
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Erro ao remover organizador')
+    }
+  }
+
+  return (
+    <section>
+      <div className="rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-cobalt-700 text-white px-3 py-2 text-xs font-black tracking-wide">
+          EQUIPE DE ORGANIZAÇÃO
+        </div>
+        <div className="p-3 space-y-3">
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 uppercase tracking-wide">Organizador principal</p>
+            <p className="text-sm text-gray-700">
+              {primaryOrganizerLabel ?? <span className="text-gray-400">não definido</span>}
+            </p>
+          </div>
+
+          {isLoading ? (
+            <div className="text-sm text-gray-400 text-center py-2">Carregando organizadores...</div>
+          ) : error ? (
+            <ErrorMessage message="Erro ao carregar organizadores" />
+          ) : coOrganizers.length === 0 ? (
+            <p className="text-xs text-gray-400">Nenhum co-organizador ainda.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {coOrganizers.map((co) => (
+                <span
+                  key={co.user_id}
+                  className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full"
+                >
+                  {getUserLabel(co.user_id)}
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(co.user_id)}
+                    disabled={removeCoOrganizer.isPending}
+                    className="ml-0.5 hover:text-purple-600 disabled:opacity-40"
+                    aria-label="Remover organizador"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {available.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Adicionar organizador</p>
+              <SearchableSelect
+                options={available}
+                value={null}
+                onChange={handleAdd}
+                getLabel={(u) => u.full_name ?? u.email ?? u.id}
+                getValue={(u) => u.id}
+                placeholder="Buscar por nome ou email..."
+                clearable={false}
+              />
+            </div>
+          )}
+
+          {actionError && <ErrorMessage message={actionError} />}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function Torneios() {
   const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
@@ -549,6 +656,7 @@ export function Torneios() {
   const [expandedMvpStatsTournamentId, setExpandedMvpStatsTournamentId] = useState<string | null>(null)
   const [expandedStandingsTournamentId, setExpandedStandingsTournamentId] = useState<string | null>(null)
   const [expandedRulesTournamentId, setExpandedRulesTournamentId] = useState<string | null>(null)
+  const [expandedTeamTournamentId, setExpandedTeamTournamentId] = useState<string | null>(null)
   const [statsSortKey, setStatsSortKey] = useState<StatsSortKey>('goals')
   const [statsSortDirection, setStatsSortDirection] = useState<SortDirection>('desc')
   const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -841,6 +949,7 @@ export function Torneios() {
             const mvpStatsExpanded = expandedMvpStatsTournamentId === tournament.id
             const standingsExpanded = expandedStandingsTournamentId === tournament.id
             const rulesExpanded = expandedRulesTournamentId === tournament.id
+            const teamExpanded = expandedTeamTournamentId === tournament.id
             const canViewStats = isAdmin || isPastDate(tournament.end_date)
             const statsLoading = gamesLoading || goalsLoading || defensesLoading
             const statsError = gamesError || goalsError || defensesError
@@ -943,6 +1052,22 @@ export function Torneios() {
                 </Button>
 
                 {rulesExpanded && <TableRulesSection rules={tournament.rules} />}
+
+                {canManageTournamentTeam(session, tournament) && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setExpandedTeamTournamentId(teamExpanded ? null : tournament.id)}
+                    className="w-full"
+                  >
+                    {teamExpanded ? 'Ocultar equipe de organização' : 'Equipe de organização'}
+                  </Button>
+                )}
+
+                {teamExpanded && canManageTournamentTeam(session, tournament) && (
+                  <OrganizerTeamSection tournament={tournament} />
+                )}
 
                 {canViewStats && (
                   <Button

@@ -78,14 +78,16 @@ function UserRow({ user }: { user: AdminUser }) {
 function CoOrganizerTag({
   co,
   tournamentId,
+  label,
 }: {
   co: CoOrganizerWithProfile
   tournamentId: string
+  label: string
 }) {
   const remove = useRemoveCoOrganizer()
   return (
     <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
-      {co.profile?.full_name ?? co.user_id.slice(0, 8)}
+      {label}
       <button
         onClick={() => remove.mutate({ tournamentId, userId: co.user_id })}
         disabled={remove.isPending}
@@ -111,6 +113,12 @@ function TournamentOrganizerCard({
 }) {
   const add = useAddCoOrganizer()
   const [addError, setAddError] = useState<string | null>(null)
+
+  const organizerUsersById = new Map(organizerUsers.map((u) => [u.id, u]))
+  const getUserLabel = (userId: string) => {
+    const user = organizerUsersById.get(userId)
+    return user?.full_name ?? user?.email ?? userId.slice(0, 8)
+  }
 
   const existingUserIds = new Set(coOrganizers.map((c) => c.user_id))
   if (tournament.organizer_id) existingUserIds.add(tournament.organizer_id)
@@ -145,7 +153,12 @@ function TournamentOrganizerCard({
         {coOrganizers.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {coOrganizers.map((co) => (
-              <CoOrganizerTag key={co.user_id} co={co} tournamentId={tournament.id} />
+              <CoOrganizerTag
+                key={co.user_id}
+                co={co}
+                tournamentId={tournament.id}
+                label={getUserLabel(co.user_id)}
+              />
             ))}
           </div>
         ) : (
