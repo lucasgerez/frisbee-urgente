@@ -39,3 +39,8 @@ export function canCloseTournament(session: Session | null, tournament: Tourname
   if (isAdminRole(session)) return true
   return isOrganizerRole(session) && tournament.organizer_id === (session?.user.id ?? null)
 }
+
+export function canManageTournamentTeam(session: Session | null, tournament: Tournament): boolean {
+  if (isAdminRole(session)) return true
+  return isOrganizerRole(session) && tournament.organizer_id === (session?.user.id ?? null)
+}

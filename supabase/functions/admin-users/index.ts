@@ -31,13 +31,16 @@ Deno.serve(async (req) => {
   const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
 
   if (userError || !user) return json({ error: 'Unauthorized' }, 401)
-  if (user.app_metadata?.role !== 'admin') return json({ error: 'Forbidden' }, 403)
+  const callerRole = user.app_metadata?.role
+  const isAdminCaller = callerRole === 'admin'
+  const isOrganizerCaller = callerRole === 'organizador'
+  if (!isAdminCaller && !isOrganizerCaller) return json({ error: 'Forbidden' }, 403)
 
   if (req.method === 'GET') {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
     if (error) return json({ error: error.message }, 500)
 
-    const users = data.users.map((u) => ({
+    let users = data.users.map((u) => ({
       id: u.id,
       email: u.email ?? null,
       full_name: typeof u.user_metadata?.full_name === 'string' ? u.user_metadata.full_name : null,
@@ -45,10 +48,18 @@ Deno.serve(async (req) => {
       created_at: u.created_at,
     }))
 
+    // Organizers can only search for other organizers to invite as co-organizers -
+    // never the full user list (emails, other roles) that admins see.
+    if (!isAdminCaller) {
+      users = users.filter((u) => u.role === 'organizador')
+    }
+
     return json({ users })
   }
 
   if (req.method === 'PATCH') {
+    if (!isAdminCaller) return json({ error: 'Forbidden' }, 403)
+
     const body = await req.json().catch(() => null)
     if (!body?.userId) return json({ error: 'userId obrigatorio' }, 400)
 
