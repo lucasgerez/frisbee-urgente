@@ -203,6 +203,50 @@ export function useTournamentSpiritScoreDetails(enabled = true) {
   })
 }
 
+export interface SpiritCompletionGame {
+  tournamentId: string
+  gameId: string
+  teamAId: string
+  teamAName: string
+  teamBId: string
+  teamBName: string
+  gameDate: string | null
+  teamASubmittedSpirit: boolean
+  teamBSubmittedSpirit: boolean
+}
+
+export function useTournamentSpiritCompletion(enabled = true) {
+  return useQuery({
+    queryKey: ['tournament-spirit-completion'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_tournament_spirit_completion')
+      if (error) throw error
+      return (data as {
+        tournament_id: string
+        game_id: string
+        team_a_id: string
+        team_a_name: string
+        team_b_id: string
+        team_b_name: string
+        game_date: string | null
+        team_a_submitted_spirit: boolean
+        team_b_submitted_spirit: boolean
+      }[]).map((row) => ({
+        tournamentId: row.tournament_id,
+        gameId: row.game_id,
+        teamAId: row.team_a_id,
+        teamAName: row.team_a_name,
+        teamBId: row.team_b_id,
+        teamBName: row.team_b_name,
+        gameDate: row.game_date,
+        teamASubmittedSpirit: row.team_a_submitted_spirit,
+        teamBSubmittedSpirit: row.team_b_submitted_spirit,
+      })) satisfies SpiritCompletionGame[]
+    },
+    enabled,
+  })
+}
+
 export function useUpdateSpiritScore() {
   const qc = useQueryClient()
 
