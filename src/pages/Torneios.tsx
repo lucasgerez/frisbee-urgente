@@ -8,8 +8,10 @@ import { useDefenses } from '../hooks/useDefenses'
 import {
   useTournamentSpiritStats,
   useTournamentSpiritScoreDetails,
+  useTournamentSpiritCompletion,
   SPIRIT_ITEM_LABELS,
   type SpiritScoreGameDetail,
+  type SpiritCompletionGame,
 } from '../hooks/useSpiritScores'
 import { useTournamentMvpStats } from '../hooks/useMatchMvps'
 import { computeTournamentStandings } from '../lib/standings'
@@ -34,6 +36,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useAdminUsers } from '../hooks/useAdminUsers'
 import {
   useTournamentCoOrganizers,
+  useTournamentsWithCoOrganizers,
   useAddCoOrganizer,
   useRemoveCoOrganizer,
   filterOrganizerUsers,
@@ -639,6 +642,100 @@ function OrganizerTeamSection({ tournament }: { tournament: Tournament }) {
   )
 }
 
+function SpiritComplianceStatus({ submitted }: { submitted: boolean }) {
+  return submitted ? (
+    <span className="inline-flex items-center gap-1 text-emerald-700 font-bold text-xs shrink-0">
+      ✅ Enviado
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-amber-700 font-bold text-xs shrink-0">
+      ⚠️ Falta preencher
+    </span>
+  )
+}
+
+function SpiritComplianceTeamStatus({
+  teamName,
+  opponentName,
+  submitted,
+}: {
+  teamName: string
+  opponentName: string
+  submitted: boolean
+}) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    const message = `Olá, time ${teamName}, por favor preencham a nota de espírito do jogo contra ${opponentName}.`
+    try {
+      await navigator.clipboard.writeText(message)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard unavailable in this browser/context; nothing to fall back to.
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="text-gray-600 truncate">{teamName}</span>
+        <SpiritComplianceStatus submitted={submitted} />
+      </div>
+      {!submitted && (
+        <Button type="button" variant="secondary" size="sm" onClick={handleCopy} className="w-full">
+          {copied ? 'Copiado!' : 'Copiar lembrete'}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function SpiritComplianceGameRow({ game }: { game: SpiritCompletionGame }) {
+  return (
+    <div className="px-3 py-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium text-gray-900 truncate">
+          {game.teamAName} vs {game.teamBName}
+        </span>
+        {game.gameDate && (
+          <span className="text-xs text-gray-400 shrink-0">{formatDateOnly(game.gameDate)}</span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <SpiritComplianceTeamStatus
+          teamName={game.teamAName}
+          opponentName={game.teamBName}
+          submitted={game.teamASubmittedSpirit}
+        />
+        <SpiritComplianceTeamStatus
+          teamName={game.teamBName}
+          opponentName={game.teamAName}
+          submitted={game.teamBSubmittedSpirit}
+        />
+      </div>
+    </div>
+  )
+}
+
+function SpiritComplianceSection({ games }: { games: SpiritCompletionGame[] }) {
+  if (games.length === 0) {
+    return (
+      <div className="text-sm text-gray-400 text-center py-3">
+        Nenhum jogo finalizado ainda.
+      </div>
+    )
+  }
+
+  return (
+    <div className="divide-y divide-gray-100">
+      {games.map((game) => (
+        <SpiritComplianceGameRow key={game.gameId} game={game} />
+      ))}
+    </div>
+  )
+}
+
 export function Torneios() {
   const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
@@ -657,6 +754,7 @@ export function Torneios() {
   const [expandedStandingsTournamentId, setExpandedStandingsTournamentId] = useState<string | null>(null)
   const [expandedRulesTournamentId, setExpandedRulesTournamentId] = useState<string | null>(null)
   const [expandedTeamTournamentId, setExpandedTeamTournamentId] = useState<string | null>(null)
+  const [expandedSpiritControlTournamentId, setExpandedSpiritControlTournamentId] = useState<string | null>(null)
   const [statsSortKey, setStatsSortKey] = useState<StatsSortKey>('goals')
   const [statsSortDirection, setStatsSortDirection] = useState<SortDirection>('desc')
   const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -671,7 +769,7 @@ export function Torneios() {
   const updateTournament = useUpdateTournament()
   const deleteTournamentMutation = useDeleteTournament()
   const closeTournamentMutation = useCloseTournament()
-  const { isLoading: authLoading, session, isAdmin } = useAuth()
+  const { isLoading: authLoading, session, isAdmin, isEditor, isOrganizer } = useAuth()
   const { data: adminUsers = [] } = useAdminUsers({ enabled: isAdmin })
   const organizerUsers = adminUsers.filter((u) => u.role === 'organizador')
   const {
@@ -681,11 +779,25 @@ export function Torneios() {
   } = useTournamentSpiritStats()
   const { data: spiritScoreDetails = [] } = useTournamentSpiritScoreDetails()
   const {
+    data: spiritCompletion = [],
+    isLoading: spiritCompletionLoading,
+    error: spiritCompletionError,
+  } = useTournamentSpiritCompletion()
+  const { data: tournamentsWithCoOrganizers = [] } = useTournamentsWithCoOrganizers()
+  const {
     data: matchMvps = [],
     isLoading: matchMvpsLoading,
     error: matchMvpsError,
   } = useTournamentMvpStats()
   const canEditTournament = (tournament: Tournament) => canManageTournament(session, tournament)
+
+  const canViewSpiritControl = (tournament: Tournament) => {
+    if (isAdmin || isEditor) return true
+    if (!isOrganizer || !session) return false
+    if (tournament.organizer_id === session.user.id) return true
+    const entry = tournamentsWithCoOrganizers.find((t) => t.id === tournament.id)
+    return !!entry?.co_organizers.some((co) => co.user_id === session.user.id)
+  }
 
   const requireManageTournament = (tournament?: Tournament | null) => {
     setPermissionError(null)
@@ -950,7 +1062,14 @@ export function Torneios() {
             const standingsExpanded = expandedStandingsTournamentId === tournament.id
             const rulesExpanded = expandedRulesTournamentId === tournament.id
             const teamExpanded = expandedTeamTournamentId === tournament.id
+            const spiritControlExpanded = expandedSpiritControlTournamentId === tournament.id
             const canViewStats = isAdmin || isPastDate(tournament.end_date)
+            const tournamentSpiritCompletion = spiritCompletion.filter(
+              (game) => game.tournamentId === tournament.id
+            )
+            const spiritCompliancePending = tournamentSpiritCompletion.filter(
+              (game) => !game.teamASubmittedSpirit || !game.teamBSubmittedSpirit
+            ).length
             const statsLoading = gamesLoading || goalsLoading || defensesLoading
             const statsError = gamesError || goalsError || defensesError
             const spiritStats = computeSpiritTournamentStats(tournament.id, spiritScores)
@@ -1067,6 +1186,43 @@ export function Torneios() {
 
                 {teamExpanded && canManageTournamentTeam(session, tournament) && (
                   <OrganizerTeamSection tournament={tournament} />
+                )}
+
+                {canViewSpiritControl(tournament) && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      setExpandedSpiritControlTournamentId(spiritControlExpanded ? null : tournament.id)
+                    }
+                    className="w-full"
+                  >
+                    {spiritControlExpanded
+                      ? 'Ocultar controle de espírito'
+                      : spiritCompliancePending > 0
+                        ? `Controle de espírito (${spiritCompliancePending} pendente${spiritCompliancePending > 1 ? 's' : ''})`
+                        : 'Controle de espírito'}
+                  </Button>
+                )}
+
+                {canViewSpiritControl(tournament) && spiritControlExpanded && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="bg-rose-700 text-white px-3 py-2 text-xs font-black tracking-wide">
+                      CONTROLE DE ESPÍRITO
+                    </div>
+                    {spiritCompletionLoading ? (
+                      <div className="text-sm text-gray-400 text-center py-3">
+                        Carregando controle de espírito...
+                      </div>
+                    ) : spiritCompletionError ? (
+                      <div className="p-3">
+                        <ErrorMessage message="Erro ao carregar controle de espírito" />
+                      </div>
+                    ) : (
+                      <SpiritComplianceSection games={tournamentSpiritCompletion} />
+                    )}
+                  </div>
                 )}
 
                 {canViewStats && (

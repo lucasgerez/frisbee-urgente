@@ -32,3 +32,6 @@ dist-ssr
 .claude/settings.local.json
 .md
 .md*
+
+# Supabase local
+supabase/.temp/linked-project.json
