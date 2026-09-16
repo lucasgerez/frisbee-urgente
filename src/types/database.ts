@@ -77,6 +77,7 @@ export interface Goal {
   scoring_team_id: string
   scorer_roster_player_id: string | null
   assistant_roster_player_id: string | null
+  is_callahan: boolean
   archived_at: string | null
   created_at: string
 }

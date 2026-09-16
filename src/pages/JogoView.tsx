@@ -86,10 +86,16 @@ export function JogoView() {
                   <span className={`ml-1 text-xs ${(goal.scorer_roster ?? goal.scorer).gender === 'Masculino' ? 'text-blue-500' : 'text-pink-500'}`}>
                     ({(goal.scorer_roster ?? goal.scorer).gender === 'Masculino' ? 'M' : 'F'})
                   </span>
-                  {goal.assistant && (
-                    <span className="text-xs text-gray-400 ml-1">
-                      · assist: {getPlayerDisplayName(goal.assistant_roster ?? goal.assistant)}
+                  {goal.is_callahan ? (
+                    <span className="text-xs font-bold text-gold-600 ml-1">
+                      🥏 Callahan!
                     </span>
+                  ) : (
+                    goal.assistant && (
+                      <span className="text-xs text-gray-400 ml-1">
+                        · assist: {getPlayerDisplayName(goal.assistant_roster ?? goal.assistant)}
+                      </span>
+                    )
                   )}
                 </div>
                 <span className="text-xs text-gray-400 shrink-0">{goal.scoring_team.name}</span>

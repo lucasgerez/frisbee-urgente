@@ -83,6 +83,7 @@ export function useCreateGoal() {
       scoring_team_id: string
       scorer_roster_player_id: string
       assistant_roster_player_id: string | null
+      is_callahan: boolean
     }) => {
       const { data, error } = await supabase
         .from('goals')
