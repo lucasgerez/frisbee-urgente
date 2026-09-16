@@ -4,6 +4,7 @@ interface TeamStats {
   goals: { total: number; M: number; F: number }
   assists: { total: number; M: number; F: number }
   defenses: { total: number; M: number; F: number }
+  callahans: { total: number; M: number; F: number }
 }
 
 function computeTeamStats(
@@ -16,6 +17,7 @@ function computeTeamStats(
     (g) => g.scoring_team_id === teamId && g.assistant_id !== null
   )
   const teamDefenses = defenses.filter((d) => d.team_id === teamId)
+  const teamCallahans = goals.filter((g) => g.scoring_team_id === teamId && g.is_callahan)
 
   return {
     goals: {
@@ -33,20 +35,28 @@ function computeTeamStats(
       M: teamDefenses.filter((d) => (d.roster_player ?? d.player).gender === 'Masculino').length,
       F: teamDefenses.filter((d) => (d.roster_player ?? d.player).gender === 'Feminino').length,
     },
+    callahans: {
+      total: teamCallahans.length,
+      M: teamCallahans.filter((g) => (g.scorer_roster ?? g.scorer).gender === 'Masculino').length,
+      F: teamCallahans.filter((g) => (g.scorer_roster ?? g.scorer).gender === 'Feminino').length,
+    },
   }
 }
 
 interface StatCellProps {
   stats: { total: number; M: number; F: number }
   align: 'left' | 'right'
+  highlight?: boolean
 }
 
-function StatCell({ stats, align }: StatCellProps) {
+function StatCell({ stats, align, highlight }: StatCellProps) {
   return (
     <div
       className={`flex flex-col items-${align === 'left' ? 'start' : 'end'} px-3 py-2`}
     >
-      <div className="text-xl font-black text-gray-900">{stats.total}</div>
+      <div className={`text-xl font-black ${highlight ? 'text-gold-600' : 'text-gray-900'}`}>
+        {stats.total}
+      </div>
       <div className="flex gap-2 text-xs mt-0.5">
         <span className="text-blue-600 font-medium">M {stats.M}</span>
         <span className="text-pink-500 font-medium">F {stats.F}</span>
@@ -71,6 +81,10 @@ const statRows = [
 export function StatsTable({ teamA, teamB, goals, defenses }: StatsTableProps) {
   const statsA = computeTeamStats(goals, defenses, teamA.id)
   const statsB = computeTeamStats(goals, defenses, teamB.id)
+  const hasCallahan = statsA.callahans.total + statsB.callahans.total > 0
+  const rows = hasCallahan
+    ? [...statRows, { key: 'callahans' as const, label: '🥏 CALLAHAN' }]
+    : statRows
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 mx-4 my-4">
@@ -84,18 +98,27 @@ export function StatsTable({ teamA, teamB, goals, defenses }: StatsTableProps) {
       </div>
 
       {/* Rows */}
-      {statRows.map((row, i) => (
-        <div
-          key={row.key}
-          className={`grid grid-cols-3 items-center ${i % 2 === 0 ? 'bg-white' : 'bg-cobalt-50'}`}
-        >
-          <StatCell stats={statsA[row.key]} align="left" />
-          <div className="bg-cobalt-600 text-white text-center py-3 px-2">
-            <span className="text-xs font-black tracking-wide">{row.label}</span>
+      {rows.map((row, i) => {
+        const isCallahanRow = row.key === 'callahans'
+        return (
+          <div
+            key={row.key}
+            className={`grid grid-cols-3 items-center ${
+              isCallahanRow ? 'bg-gold-50' : i % 2 === 0 ? 'bg-white' : 'bg-cobalt-50'
+            }`}
+          >
+            <StatCell stats={statsA[row.key]} align="left" highlight={isCallahanRow} />
+            <div
+              className={`text-center py-3 px-2 ${
+                isCallahanRow ? 'bg-gold-500 text-gray-900' : 'bg-cobalt-600 text-white'
+              }`}
+            >
+              <span className="text-xs font-black tracking-wide">{row.label}</span>
+            </div>
+            <StatCell stats={statsB[row.key]} align="right" highlight={isCallahanRow} />
           </div>
-          <StatCell stats={statsB[row.key]} align="right" />
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

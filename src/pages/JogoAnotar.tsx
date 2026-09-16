@@ -293,10 +293,16 @@ export function JogoAnotar() {
                               ({(event.goal.scorer_roster ?? event.goal.scorer).gender === 'Masculino' ? 'M' : 'F'})
                             </span>
                           </div>
-                          {event.goal.assistant && (
-                            <div className="text-xs text-gray-400 truncate">
-                              Assist: {getPlayerDisplayName(event.goal.assistant_roster ?? event.goal.assistant)}
+                          {event.goal.is_callahan ? (
+                            <div className="text-xs font-bold text-gold-600 truncate">
+                              🥏 Callahan!
                             </div>
+                          ) : (
+                            event.goal.assistant && (
+                              <div className="text-xs text-gray-400 truncate">
+                                Assist: {getPlayerDisplayName(event.goal.assistant_roster ?? event.goal.assistant)}
+                              </div>
+                            )
                           )}
                           <div className="text-xs text-gray-400">{event.goal.scoring_team.name}</div>
                         </>

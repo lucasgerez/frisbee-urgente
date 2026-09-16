@@ -19,6 +19,7 @@ interface GoalModalProps {
     scoring_team_id: string
     scorer_roster_player_id: string
     assistant_roster_player_id: string | null
+    is_callahan: boolean
   }) => Promise<void>
 }
 
@@ -34,6 +35,7 @@ export function GoalModal({
   const [activeTeam, setActiveTeam] = useState<'A' | 'B'>('A')
   const [scorer, setScorer] = useState<TournamentRosterPlayer | null>(null)
   const [assistant, setAssistant] = useState<TournamentRosterPlayer | null>(null)
+  const [isCallahan, setIsCallahan] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -44,6 +46,12 @@ export function GoalModal({
     setActiveTeam(t)
     setScorer(null)
     setAssistant(null)
+    setIsCallahan(false)
+  }
+
+  const handleCallahanChange = (checked: boolean) => {
+    setIsCallahan(checked)
+    if (checked) setAssistant(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,13 +65,15 @@ export function GoalModal({
     try {
       await onConfirm({
         scorer_id: scorer.player_id,
-        assistant_id: assistant?.player_id ?? null,
+        assistant_id: isCallahan ? null : assistant?.player_id ?? null,
         scoring_team_id: team.id,
         scorer_roster_player_id: scorer.id,
-        assistant_roster_player_id: assistant?.id ?? null,
+        assistant_roster_player_id: isCallahan ? null : assistant?.id ?? null,
+        is_callahan: isCallahan,
       })
       setScorer(null)
       setAssistant(null)
+      setIsCallahan(false)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao registrar gol')
@@ -75,6 +85,7 @@ export function GoalModal({
   const handleClose = () => {
     setScorer(null)
     setAssistant(null)
+    setIsCallahan(false)
     setError('')
     onClose()
   }
@@ -119,21 +130,39 @@ export function GoalModal({
           />
         </div>
 
-        {/* Assistant */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Assistência <span className="text-gray-400 font-normal">(opcional)</span>
-          </label>
-          <SearchableSelect
-            options={players}
-            value={assistant}
-            onChange={setAssistant}
-            getLabel={getPlayerLabel}
-            getValue={(p) => p.id}
-            placeholder="Buscar jogador..."
-            clearable
+        {/* Callahan toggle */}
+        <label className="flex items-start gap-2.5 bg-gold-50 border border-gold-200 rounded-xl px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isCallahan}
+            onChange={(e) => handleCallahanChange(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-cobalt-600 focus:ring-cobalt-500 shrink-0"
           />
-        </div>
+          <span className="text-sm text-gray-700">
+            <span className="font-medium">🥏 Foi um Callahan</span>{' '}
+            <span className="text-gray-500">
+              (interceptação na end zone de ataque que marca ponto direto, sem assistência)
+            </span>
+          </span>
+        </label>
+
+        {/* Assistant */}
+        {!isCallahan && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Assistência <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <SearchableSelect
+              options={players}
+              value={assistant}
+              onChange={setAssistant}
+              getLabel={getPlayerLabel}
+              getValue={(p) => p.id}
+              placeholder="Buscar jogador..."
+              clearable
+            />
+          </div>
+        )}
 
         <ErrorMessage message={error} />
 
