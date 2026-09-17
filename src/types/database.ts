@@ -2,6 +2,7 @@
 
 export type Gender = 'Masculino' | 'Feminino'
 export type GameStatus = 'pending' | 'in_progress' | 'paused' | 'finished'
+export type GameStage = 'final' | 'third_place'
 export type TournamentStatus = 'draft' | 'active' | 'completed'
 
 // ─── Raw DB row types ─────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ export interface Game {
   team_a_id: string
   team_b_id: string
   status: GameStatus
+  stage: GameStage | null
   started_at: string | null
   ended_at: string | null
   archived_at: string | null
@@ -243,6 +245,7 @@ export type Database = {
     Enums: {
       gender_enum: Gender
       game_status: GameStatus
+      game_stage: GameStage
       tournament_status: TournamentStatus
     }
     CompositeTypes: {}

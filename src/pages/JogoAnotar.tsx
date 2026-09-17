@@ -13,7 +13,7 @@ import { DefenseModal } from '../components/games/DefenseModal'
 import { Button } from '../components/ui/Button'
 import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
-import { GameStatusBadge } from '../components/ui/Badge'
+import { GameStageBadge, GameStatusBadge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { scoreColorClass } from '../lib/utils'
 import { canManageTournament } from '../lib/auth'
@@ -165,7 +165,10 @@ export function JogoAnotar() {
           <Link to={`/jogos/${game.id}`} className="text-gray-400 hover:text-white text-sm">
             ← Ver estatísticas
           </Link>
-          <GameStatusBadge status={game.status} />
+          <div className="flex items-center gap-1.5">
+            {game.stage && <GameStageBadge stage={game.stage} />}
+            <GameStatusBadge status={game.status} />
+          </div>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex-1 text-center">

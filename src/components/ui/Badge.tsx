@@ -1,5 +1,5 @@
 import { cn } from '../../lib/utils'
-import type { GameStatus, Gender } from '../../types/database'
+import type { GameStage, GameStatus, Gender } from '../../types/database'
 
 interface BadgeProps {
   children: React.ReactNode
@@ -58,4 +58,28 @@ export function GameStatusBadge({ status }: { status: GameStatus }) {
 
 export function GenderBadge({ gender }: { gender: Gender }) {
   return <Badge variant="gender" gender={gender}>{gender}</Badge>
+}
+
+const stageLabels: Record<GameStage, string> = {
+  final: 'Final',
+  third_place: 'Disputa de 3º/4º',
+}
+
+const stageColors: Record<GameStage, string> = {
+  final: 'bg-amber-100 text-amber-700',
+  third_place: 'bg-orange-100 text-orange-700',
+}
+
+export function GameStageBadge({ stage }: { stage: GameStage }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+        stageColors[stage]
+      )}
+    >
+      {stage === 'final' ? '🏆 ' : ''}
+      {stageLabels[stage]}
+    </span>
+  )
 }

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { GameWithTeams } from '../../types/database'
-import { GameStatusBadge } from '../ui/Badge'
+import { GameStageBadge, GameStatusBadge } from '../ui/Badge'
 import { formatDateTime, scoreColorClass } from '../../lib/utils'
 
 interface GameCardProps {
@@ -21,7 +21,10 @@ export function GameCard({ game, goalCounts, onSpiritScore, onMatchMvp, onEdit, 
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-400">{game.tournament.name}</span>
-          <GameStatusBadge status={game.status} />
+          <div className="flex items-center gap-1.5">
+            {game.stage && <GameStageBadge stage={game.stage} />}
+            <GameStatusBadge status={game.status} />
+          </div>
         </div>
 
         <div className="flex items-center justify-between">

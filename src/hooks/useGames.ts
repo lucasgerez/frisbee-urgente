@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Game, GameStatus, GameWithTeams, TournamentTeam } from '../types/database'
+import type { Game, GameStage, GameStatus, GameWithTeams, TournamentTeam } from '../types/database'
 import { buildTournamentTeamSnapshotMap, getTournamentTeamSnapshotName } from '../lib/teamSnapshots'
 
 async function applyGameTeamSnapshots(games: GameWithTeams[]) {
@@ -68,10 +68,11 @@ export function useCreateGame() {
       tournament_id: string
       team_a_id: string
       team_b_id: string
+      stage?: GameStage | null
     }) => {
       const { data, error } = await supabase
         .from('games')
-        .insert({ ...payload, status: 'pending' })
+        .insert({ ...payload, stage: payload.stage ?? null, status: 'pending' })
         .select()
         .single()
       if (error) throw error
@@ -131,15 +132,17 @@ export function useUpdateGame() {
       tournament_id,
       team_a_id,
       team_b_id,
+      stage,
     }: {
       id: string
       tournament_id: string
       team_a_id: string
       team_b_id: string
+      stage?: GameStage | null
     }) => {
       const { data, error } = await supabase
         .from('games')
-        .update({ tournament_id, team_a_id, team_b_id })
+        .update({ tournament_id, team_a_id, team_b_id, stage: stage ?? null })
         .eq('id', id)
         .select()
         .single()
