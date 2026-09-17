@@ -1,6 +1,6 @@
 import type { GameWithTeams, GoalWithPlayers } from '../../types/database'
 import { scoreColorClass } from '../../lib/utils'
-import { GameStatusBadge } from '../ui/Badge'
+import { GameStageBadge, GameStatusBadge } from '../ui/Badge'
 
 interface ScoreboardProps {
   game: GameWithTeams
@@ -26,6 +26,7 @@ export function Scoreboard({ game, goals, timerDisplay }: ScoreboardProps) {
           <div className="bg-gray-700 rounded-lg px-3 py-1 text-xs text-gray-300 font-mono">
             {timerDisplay ?? '00:00'}
           </div>
+          {game.stage && <GameStageBadge stage={game.stage} />}
           <GameStatusBadge status={game.status} />
           <div className="text-gray-500 text-xs mt-1">{game.tournament.name}</div>
         </div>

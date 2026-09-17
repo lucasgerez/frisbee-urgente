@@ -1,4 +1,4 @@
-import type { GameWithTeams, GoalWithPlayers } from '../types/database'
+import type { GameStage, GameWithTeams, GoalWithPlayers } from '../types/database'
 
 export interface TeamStandingRow {
   teamId: string
@@ -73,4 +73,61 @@ export function computeTournamentStandings(
       if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor
       return a.teamName.localeCompare(b.teamName)
     })
+}
+
+export interface DecisiveGameResult {
+  game: GameWithTeams
+  scoreA: number
+  scoreB: number
+  winnerTeamId: string | null
+  winnerTeamName: string | null
+}
+
+function resolveDecisiveGame(
+  tournamentGames: GameWithTeams[],
+  goals: GoalWithPlayers[],
+  stage: GameStage
+): DecisiveGameResult | null {
+  const candidates = tournamentGames
+    .filter((game) => game.stage === stage)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const game = candidates[0]
+  if (!game) return null
+
+  if (game.status !== 'finished') {
+    return { game, scoreA: 0, scoreB: 0, winnerTeamId: null, winnerTeamName: null }
+  }
+
+  const scoreA = goals.filter(
+    (g) => g.game_id === game.id && g.scoring_team_id === game.team_a_id
+  ).length
+  const scoreB = goals.filter(
+    (g) => g.game_id === game.id && g.scoring_team_id === game.team_b_id
+  ).length
+
+  let winnerTeamId: string | null = null
+  let winnerTeamName: string | null = null
+  if (scoreA > scoreB) {
+    winnerTeamId = game.team_a_id
+    winnerTeamName = game.team_a.name
+  } else if (scoreB > scoreA) {
+    winnerTeamId = game.team_b_id
+    winnerTeamName = game.team_b.name
+  }
+
+  return { game, scoreA, scoreB, winnerTeamId, winnerTeamName }
+}
+
+export function getTournamentChampion(
+  tournamentGames: GameWithTeams[],
+  goals: GoalWithPlayers[]
+): DecisiveGameResult | null {
+  return resolveDecisiveGame(tournamentGames, goals, 'final')
+}
+
+export function getTournamentThirdPlace(
+  tournamentGames: GameWithTeams[],
+  goals: GoalWithPlayers[]
+): DecisiveGameResult | null {
+  return resolveDecisiveGame(tournamentGames, goals, 'third_place')
 }

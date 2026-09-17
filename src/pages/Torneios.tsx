@@ -14,7 +14,7 @@ import {
   type SpiritCompletionGame,
 } from '../hooks/useSpiritScores'
 import { useTournamentMvpStats } from '../hooks/useMatchMvps'
-import { computeTournamentStandings } from '../lib/standings'
+import { computeTournamentStandings, getTournamentChampion, getTournamentThirdPlace } from '../lib/standings'
 import {
   useTournaments,
   useTournamentTeams,
@@ -1075,6 +1075,8 @@ export function Torneios() {
             const spiritStats = computeSpiritTournamentStats(tournament.id, spiritScores)
             const mvpStats = computeMvpTournamentStats(tournament.id, matchMvps)
             const standingsRows = computeTournamentStandings(tournamentGames, goals)
+            const champion = getTournamentChampion(tournamentGames, goals)
+            const thirdPlace = getTournamentThirdPlace(tournamentGames, goals)
 
             return (
               <div
@@ -1372,6 +1374,20 @@ export function Torneios() {
                     <div className="bg-gray-900 text-white px-3 py-2 text-xs font-black tracking-wide">
                       CLASSIFICAÇÃO
                     </div>
+                    {(champion?.winnerTeamName || thirdPlace?.winnerTeamName) && (
+                      <div className="px-3 py-2 border-b border-gray-100 space-y-1 bg-amber-50">
+                        {champion?.winnerTeamName && (
+                          <div className="text-sm font-bold text-amber-800">
+                            🏆 Campeão: {champion.winnerTeamName}
+                          </div>
+                        )}
+                        {thirdPlace?.winnerTeamName && (
+                          <div className="text-xs text-gray-600">
+                            🥉 3º lugar: {thirdPlace.winnerTeamName}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {gamesLoading || goalsLoading ? (
                       <div className="text-sm text-gray-400 text-center py-3">
                         Carregando classificação...

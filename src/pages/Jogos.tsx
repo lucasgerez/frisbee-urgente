@@ -16,7 +16,7 @@ import { LoadingScreen } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { isPastDate } from '../lib/utils'
 import { canManageTournament } from '../lib/auth'
-import type { GameWithTeams, Tournament, Team } from '../types/database'
+import type { GameStage, GameWithTeams, Tournament, Team } from '../types/database'
 
 export function Jogos() {
   const navigate = useNavigate()
@@ -29,6 +29,7 @@ export function Jogos() {
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [teamA, setTeamA] = useState<Team | null>(null)
   const [teamB, setTeamB] = useState<Team | null>(null)
+  const [stage, setStage] = useState<GameStage | null>(null)
   const [search, setSearch] = useState('')
 
   const { data: tournaments = [] } = useTournaments()
@@ -78,6 +79,7 @@ export function Jogos() {
     setSelectedTournament(null)
     setTeamA(null)
     setTeamB(null)
+    setStage(null)
     setEditingGame(null)
     setShowForm(false)
   }
@@ -142,6 +144,7 @@ export function Jogos() {
     setSelectedTournament(game.tournament)
     setTeamA(game.team_a)
     setTeamB(game.team_b)
+    setStage(game.stage)
     setShowForm(true)
   }
 
@@ -168,6 +171,7 @@ export function Jogos() {
         tournament_id: selectedTournament.id,
         team_a_id: teamA.id,
         team_b_id: teamB.id,
+        stage,
       }
       if (editingGame) {
         await updateGame.mutateAsync({ id: editingGame.id, ...payload })
@@ -235,6 +239,20 @@ export function Jogos() {
                       getValue={(t) => t.id}
                       placeholder="Selecionar time B..."
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo de jogo <span className="text-gray-400 font-normal">(opcional)</span>
+                    </label>
+                    <select
+                      value={stage ?? ''}
+                      onChange={(e) => setStage(e.target.value === '' ? null : (e.target.value as GameStage))}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-cobalt-600"
+                    >
+                      <option value="">Normal</option>
+                      <option value="final">Final</option>
+                      <option value="third_place">Disputa de 3º/4º lugar</option>
+                    </select>
                   </div>
                 </>
               )}
