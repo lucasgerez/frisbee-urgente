@@ -126,7 +126,8 @@ export function TorneioEstatisticas() {
   const { isLoading: authLoading, isAdmin } = useAuth()
 
   const tournament = tournaments.find((t) => t.id === id)
-  const canViewStats = !!tournament && (isAdmin || isPastDate(tournament.end_date))
+  const canViewStats =
+    !!tournament && (isAdmin || tournament.status === 'completed' || isPastDate(tournament.end_date))
   const { data: stats, isLoading: statsLoading, error } = useTournamentStats(id, canViewStats)
 
   if (tournamentLoading || authLoading || statsLoading) return <LoadingScreen />
