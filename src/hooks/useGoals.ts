@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Goal, GoalWithPlayers, TournamentTeam } from '../types/database'
 import { buildTournamentTeamSnapshotMap, getTournamentTeamSnapshotName } from '../lib/teamSnapshots'
+import { fetchAllRows } from '../lib/fetchAllRows'
 
 type GoalWithGameTournament = GoalWithPlayers & {
   game?: { tournament_id: string } | null
@@ -41,15 +42,18 @@ export function useGoals() {
   return useQuery({
     queryKey: ['goals'],
     queryFn: async () => {
-const { data, error } = await supabase
-        .from('goals')
-        .select(
-          '*, game:games(tournament_id), scorer:players!goals_scorer_id_fkey(*), assistant:players!goals_assistant_id_fkey(*), scoring_team:teams(*), scorer_roster:tournament_roster_players!goals_scorer_roster_player_id_fkey(*), assistant_roster:tournament_roster_players!goals_assistant_roster_player_id_fkey(*)'
-        )
-        .is('archived_at', null)
-        .order('created_at')
-      if (error) throw error
-      return applyGoalTeamSnapshots(data as GoalWithGameTournament[])
+      const data = await fetchAllRows<GoalWithGameTournament>((from, to) =>
+        supabase
+          .from('goals')
+          .select(
+            '*, game:games(tournament_id), scorer:players!goals_scorer_id_fkey(*), assistant:players!goals_assistant_id_fkey(*), scoring_team:teams(*), scorer_roster:tournament_roster_players!goals_scorer_roster_player_id_fkey(*), assistant_roster:tournament_roster_players!goals_assistant_roster_player_id_fkey(*)'
+          )
+          .is('archived_at', null)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
+      return applyGoalTeamSnapshots(data)
     },
   })
 }

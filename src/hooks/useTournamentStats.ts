@@ -8,6 +8,7 @@ import type {
   TournamentTeam,
 } from '../types/database'
 import { applyTeamSnapshotName } from '../lib/teamSnapshots'
+import { fetchAllRows } from '../lib/fetchAllRows'
 
 export interface PlayerTournamentStats {
   player: Player
@@ -35,33 +36,41 @@ export function useTournamentStats(tournamentId?: string, enabled = true) {
 
       const gameIds = (gameRows as { id: string }[]).map((g) => g.id)
 
-      const [teamsRes, goalsRes, defensesRes] = await Promise.all([
+      const [teamsRes, goals, defenses] = await Promise.all([
         supabase
           .from('tournament_teams')
           .select('*, team:teams(*)')
           .eq('tournament_id', tournamentId!)
           .is('archived_at', null),
         gameIds.length > 0
-          ? supabase
-              .from('goals')
-              .select(
-                '*, scorer:players!goals_scorer_id_fkey(*), assistant:players!goals_assistant_id_fkey(*), scoring_team:teams(*), scorer_roster:tournament_roster_players!goals_scorer_roster_player_id_fkey(*), assistant_roster:tournament_roster_players!goals_assistant_roster_player_id_fkey(*)'
-              )
-              .in('game_id', gameIds)
-              .is('archived_at', null)
-          : Promise.resolve({ data: [] as GoalWithPlayers[], error: null }),
+          ? fetchAllRows<GoalWithPlayers>((from, to) =>
+              supabase
+                .from('goals')
+                .select(
+                  '*, scorer:players!goals_scorer_id_fkey(*), assistant:players!goals_assistant_id_fkey(*), scoring_team:teams(*), scorer_roster:tournament_roster_players!goals_scorer_roster_player_id_fkey(*), assistant_roster:tournament_roster_players!goals_assistant_roster_player_id_fkey(*)'
+                )
+                .in('game_id', gameIds)
+                .is('archived_at', null)
+                .order('created_at', { ascending: true })
+                .order('id', { ascending: true })
+                .range(from, to)
+            )
+          : Promise.resolve([] as GoalWithPlayers[]),
         gameIds.length > 0
-          ? supabase
-              .from('defenses')
-              .select('*, player:players(*), roster_player:tournament_roster_players!defenses_roster_player_id_fkey(*)')
-              .in('game_id', gameIds)
-              .is('archived_at', null)
-          : Promise.resolve({ data: [] as DefenseWithPlayer[], error: null }),
+          ? fetchAllRows<DefenseWithPlayer>((from, to) =>
+              supabase
+                .from('defenses')
+                .select('*, player:players(*), roster_player:tournament_roster_players!defenses_roster_player_id_fkey(*)')
+                .in('game_id', gameIds)
+                .is('archived_at', null)
+                .order('created_at', { ascending: true })
+                .order('id', { ascending: true })
+                .range(from, to)
+            )
+          : Promise.resolve([] as DefenseWithPlayer[]),
       ])
 
       if (teamsRes.error) throw teamsRes.error
-      if (goalsRes.error) throw goalsRes.error
-      if (defensesRes.error) throw defensesRes.error
 
       const teamsMap = new Map<string, Team>()
       ;(teamsRes.data as (TournamentTeam & { team: Team })[]).forEach((link) =>
@@ -85,12 +94,12 @@ export function useTournamentStats(tournamentId?: string, enabled = true) {
         return entry
       }
 
-      ;(goalsRes.data as GoalWithPlayers[]).forEach((g) => {
+      goals.forEach((g) => {
         if (g.scorer) ensure(g.scorer).goals += 1
         if (g.assistant) ensure(g.assistant).assists += 1
       })
 
-      ;(defensesRes.data as DefenseWithPlayer[]).forEach((d) => {
+      defenses.forEach((d) => {
         if (d.player) ensure(d.player).defenses += 1
       })
 
