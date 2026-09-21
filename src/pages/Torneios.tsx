@@ -1063,7 +1063,8 @@ export function Torneios() {
             const rulesExpanded = expandedRulesTournamentId === tournament.id
             const teamExpanded = expandedTeamTournamentId === tournament.id
             const spiritControlExpanded = expandedSpiritControlTournamentId === tournament.id
-            const canViewStats = isAdmin || isPastDate(tournament.end_date)
+            const canViewStats =
+              isAdmin || tournament.status === 'completed' || isPastDate(tournament.end_date)
             const tournamentSpiritCompletion = spiritCompletion.filter(
               (game) => game.tournamentId === tournament.id
             )
