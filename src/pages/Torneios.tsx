@@ -699,7 +699,7 @@ function SpiritComplianceGameRow({ game }: { game: SpiritCompletionGame }) {
           {game.teamAName} vs {game.teamBName}
         </span>
         {game.gameDate && (
-          <span className="text-xs text-gray-400 shrink-0">{formatDateOnly(game.gameDate)}</span>
+          <span className="text-xs text-gray-400 shrink-0">{formatDate(game.gameDate)}</span>
         )}
       </div>
       <div className="grid grid-cols-2 gap-3">

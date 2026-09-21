@@ -1,18 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Defense, DefenseWithPlayer } from '../types/database'
+import { fetchAllRows } from '../lib/fetchAllRows'
 
 export function useDefenses() {
   return useQuery({
     queryKey: ['defenses'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('defenses')
-        .select('*, player:players(*), roster_player:tournament_roster_players!defenses_roster_player_id_fkey(*)')
-        .is('archived_at', null)
-        .order('created_at')
-      if (error) throw error
-      return data as DefenseWithPlayer[]
+      return fetchAllRows<DefenseWithPlayer>((from, to) =>
+        supabase
+          .from('defenses')
+          .select('*, player:players(*), roster_player:tournament_roster_players!defenses_roster_player_id_fkey(*)')
+          .is('archived_at', null)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     },
   })
 }

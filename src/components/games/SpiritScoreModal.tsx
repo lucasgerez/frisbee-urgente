@@ -300,7 +300,11 @@ export function SpiritScoreModal({
 
   useEffect(() => {
     if (!open || !game) return
-    setEvaluatedTeam((!isAdmin ? editorScore?.evaluated_team : null) ?? game.team_b)
+    // Never default to a specific team (e.g. team_b) for a brand-new
+    // submission — that silently let editors rate their own team instead of
+    // the opponent. Only pre-fill when this editor is reopening a score they
+    // already submitted.
+    setEvaluatedTeam(!isAdmin ? editorScore?.evaluated_team ?? null : null)
     setCategoryScores(defaultScores)
     setError('')
   }, [open, game, isAdmin, editorScore])
@@ -334,6 +338,13 @@ export function SpiritScoreModal({
     if (!evaluatedTeam) {
       setError('Selecione o time avaliado.')
       return
+    }
+
+    if (!currentScore) {
+      const confirmed = window.confirm(
+        `Você está avaliando o espírito do time "${evaluatedTeam.name}". Confirme que este é o time ADVERSÁRIO, e não o seu próprio time.`
+      )
+      if (!confirmed) return
     }
 
     setError('')
@@ -410,13 +421,16 @@ export function SpiritScoreModal({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Time avaliado</label>
+          <p className="text-xs text-gray-500 mb-1">
+            Selecione o time ADVERSÁRIO — nunca o seu próprio time.
+          </p>
           <SearchableSelect
             options={teamOptions}
             value={evaluatedTeam}
             onChange={handleTeamChange}
             getLabel={(team) => team.name}
             getValue={(team) => team.id}
-            placeholder="Selecionar time..."
+            placeholder="Selecione o time adversário que você está avaliando"
             disabled={locked}
           />
         </div>
